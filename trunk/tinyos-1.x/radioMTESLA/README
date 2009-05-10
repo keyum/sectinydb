@@ -1,0 +1,39 @@
+README for multi-level micro-TESLA implementation
+Author/Contact: Donggang Liu, dliu@unity.ncsu.edu
+
+Description of files
+  The following files are directly adopted from TinySec package. If
+  you are interested, please go to http://www.cs.berkeley.edu/~nks/tinysec/
+   1.BlockCipher.nc
+   2.BlockCipherInfo.nc
+   3.CBCMAC.nc
+   4.crypto.h
+   5.MAC.nc
+   6.RC5M.nc
+
+  The following files are developped by the author
+   1. Attacker.nc: Definition of interface for attacker component
+   2. Buffer.nc: Definition of interface for buffer management
+   3. MTESLA.h: Definitions of some global data structure and macro
+   4. Primitive.nc: Definition of security primitive interface
+   5. Sender.nc: Definition of interface for sender component
+   6. Receiver.nc: Definition of interface for receiver component
+   7. SecPrimitive.nc: It provides the implementation of security primitive
+   8. MTESLASender.nc: It provides the implementation of sender component
+   9. MTESLAReceiver.nc: It provides the implementation of receiver component
+   10. MTESLAAttacker.nc: It provides the implementation of attacker component
+   11. Simple_BufferM.nc: It provides the implementation of buffer management.
+                          It is used by receiver component.
+   12. simM.nc: It provides the implementation of our simulation
+   13. sim.nc: Configuration files for our simulation
+
+  The following files are used to compile
+   1. Makefile
+   2. Makerules
+
+Instruction for compile:
+   
+   1. make sure you install and config TinyOS correctly. You can find
+      more detail at http://webs.cs.berkeley.edu/tos/
+   2. put all the above files in the same directory
+   3. type in "make pc"

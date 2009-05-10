@@ -1,0 +1,32 @@
+TinyDB is a query processing system for extracting information from a
+network of TinyOS sensors. Unlike existing solutions for data
+processing in TinyOS, TinyDB does not require you to write embedded C
+code for sensors.  Instead, TinyDB provides a simple, SQL-like
+interface to specify the data you want to extract, along with
+additional parameters, like the rate at which data should be refreshed
+-- much as you would pose queries against a traditional database.
+Given a query specifying your data interests, TinyDB collects that
+data from motes in the environment, filters it, aggregates it
+together, and routes it out to a PC.  TinyDB does this via
+power-efficient in-network processing algorithms.
+
+To use TinyDB, you install its TinyOS components onto each mote in
+your sensor network. (TinyDB's components can co-exist with other
+components, although they can place extensive demands on the memory
+and radio resources of the mote.)  TinyDB provides a simple Java API
+for writing PC applications that query and extract data from the
+network; it also comes with a simple graphical query-builder and
+result display that uses the API.
+
+For information on installing and using TinyDB, see doc/tinydb.pdf.
+
+The bulk of the TinyDB implementation is stored in:
+
+tos/lib/TinyDB/
+
+and the java interfaces in:
+
+tools/java/net/tinyos/tinydb/
+
+For more information or support for TinyDB, plase contact Sam Madden 
+(madden@cs.berkeley.edu.)

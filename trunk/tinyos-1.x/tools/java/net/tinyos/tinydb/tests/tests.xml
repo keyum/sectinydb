@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- List of test cases -->
+<tests>
+
+	<!-- <test> tag describes an individual test case -->
+	<test>
+		<!-- SQL query -->
+		<query>select nodeid</query>
+		
+		<!-- list of fields expected in the result -->
+		<fields>nodeid</fields>
+		
+		<!-- Should this query be successfully parsed by the parser?
+		default is false -->
+		<parsable>true</parsable>
+		
+		<!-- How many epochs should this query run -->
+		<epochsToRun>2</epochsToRun>
+		
+		<!--
+		Waiting time is the time (in milliseconds) the test suite waits
+		for this query to complete.
+		If query does not complete within this time, it is considered to fail.
+		-->
+		<waitingTime>10000</waitingTime>
+		
+		<!--
+		The <errorThreshold> tag is NOT IMPLEMENTED. The idea is that due to nondeterministic
+		nature of the sensor network, few result tuples may be missing,
+		or few extraneous tuples may appear. We don't necessarily want
+		to fail the test case when such abberations occur.
+		An errorThreshold may be specified to take this into account
+		 -->
+		<errorThreshold>0</errorThreshold>
+		
+		<!--
+		<Results> contains a list of tuples that we expect in the result/
+		If EMPTY, this query expects no tuples to match it
+		If NOT PRESENT, this test case REQUESTS that no result checking be done
+		-->
+		<results>
+			<!--
+			Note that the list of tuples should correspond to epochsToRun tag above
+			-->
+			<tuple>1 1</tuple>
+			<tuple>1 2</tuple>
+			<tuple>1 3</tuple>
+			<tuple>2 1</tuple>
+			<tuple>2 2</tuple>
+			<tuple>2 3</tuple>
+		</results>
+	</test>
+	
+	<test>
+		<query>select light</query>
+		<fields>light</fields>
+		<parsable>true</parsable>
+		<epochsToRun>1</epochsToRun>
+		<waitingTime>5000</waitingTime>
+		
+		
+	</test>
+	
+	<test>
+		<query>select light, temp</query>
+		<fields>light,temp</fields>
+		<parsable>true</parsable>
+		<epochsToRun>1</epochsToRun>
+		<waitingTime>5000</waitingTime>
+		
+	</test>
+	
+	<test>
+		<query>select light,temp,voltage,nodeid,parent,accel_x,accel_y</query>
+		<fields>light,temp,voltage,nodeid,parent,accel_x,accel_y</fields>
+		<parsable>true</parsable>
+		<epochsToRun>2</epochsToRun>
+		<waitingTime>50000</waitingTime>
+		
+	</test>
+	
+<!-- COMMENTED OUT FOR NOW
+	
+select max(light)
+select count(light)
+select count(light),max(light)
+select count(light),max(temp)
+select count(light),max(temp),min(voltage),sum(nodeid)
+select light where light > 400
+select light where light < 400
+select light where temp > 400
+select light,temp where light > 200 and temp < 100
+select light + 10
+select light + 10, temp / 10
+select avg(light + 10)
+select light where (light / 10) > 50
+select avg(light) group by nodeid
+select avg(light),min(temp) group by nodeid
+select avg(light),nodeid group by nodeid
+select light where light < 400 output action SetSnd(512)
+select light epoch duration 400
+select light epoch duration 2000
+select light epoch duration 18124
+
+#and these queries to fail
+bad queries:
+
+-->
+	<test>
+		<query>select light epoch duration -1</query>
+		<parsable>false</parsable>
+	</test>
+	
+	<test>
+		<query>select avg(light) group by light</query>
+		<parsable>false</parsable>
+	</test>
+
+	<test>
+		<query>select avg(light),temp</query>
+		<parsable>false</parsable>
+	</test>
+
+</tests>

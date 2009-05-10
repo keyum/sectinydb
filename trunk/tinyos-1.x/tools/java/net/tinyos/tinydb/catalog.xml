@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog>
+<attributes>
+	<attribute>
+		<name>nodeid</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1000</maxval>
+                <isConstant>true</isConstant>
+                <joulesPerSample>0</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>light</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1024</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.01</joulesPerSample>
+	</attribute>
+        <attribute>
+		<name>temp</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1024</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.01</joulesPerSample>
+	</attribute>
+        <attribute>
+		<name>parent</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1000</maxval>
+                <isConstant>true</isConstant>
+                <joulesPerSample>0</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>accel_x</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1024</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.1</joulesPerSample>
+	</attribute>
+        <attribute>
+		<name>accel_y</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1024</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.1</joulesPerSample>
+	</attribute>
+        <attribute>
+		<name>mag_x</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1024</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.2</joulesPerSample>
+	</attribute>
+        <attribute>
+		<name>mag_y</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1024</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.2</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>noise</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1024</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.01</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>tones</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.01</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>voltage</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1024</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.01</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>rawtone</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.01</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>rawmic</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>1024</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.01</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>qual</name>
+		<type>uint8</type>
+                <minval>0</minval>
+                <maxval>255</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.01</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>depth</name>
+		<type>uint8</type>
+                <minval>0</minval>
+                <maxval>255</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.01</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>freeram</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>512</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.01</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>name</name>
+		<type>string</type>
+	</attribute>
+	<attribute>
+		<name>content</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>100</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>0</joulesPerSample>
+	</attribute>
+	<attribute>
+		<name>attrlog</name>
+		<type>uint16</type>
+                <minval>0</minval>
+                <maxval>32767</maxval>
+                <isConstant>false</isConstant>
+                <joulesPerSample>.1</joulesPerSample>
+	</attribute>
+</attributes>
+
+<aggregates>
+	<!-- Default values for optional subtags of <aggregate> tag.
+	     These should precede any <aggregate> declarations.
+	     Do not alter these settings unless you know what you're doing -->
+	<defaultValidatorClass>net.tinyos.tinydb.DefaultArgumentValidator</defaultValidatorClass>
+	<defaultReaderClass>net.tinyos.tinydb.IntReader</defaultReaderClass>
+
+<!-- NOTES:
+	* Windowing aggregates must accept at least two constant arguments,
+		first of which should be window size in epochs, and second shoud
+		be the sliding distance in epochs
+		
+    * Argcount (argument count) only includes constant arguments,
+    	i.e. argcount SUM(nodeid) = 0, argcount WINAVG(2,1,light) = 2.
+    	It can be omitted, the default value of argcount is 0
+-->
+<!-- NOOP -->
+    <aggregate>
+        <name>NOOP</name>
+        <id>0</id>
+        <temporal>false</temporal>
+    </aggregate>
+<!-- SUM -->
+    <aggregate>
+        <name>SUM</name>
+        <id>1</id>
+        <temporal>false</temporal>
+    </aggregate>
+<!-- MIN -->
+    <aggregate>
+        <name>MIN</name>
+        <id>2</id>
+        <temporal>false</temporal>
+    </aggregate>
+<!-- MAX -->
+    <aggregate>
+        <name>MAX</name>
+        <id>3</id>
+        <temporal>false</temporal>
+        <type>normal</type>
+    </aggregate>
+<!-- COUNT -->
+    <aggregate>
+        <name>CNT</name>
+        <id>4</id>
+        <temporal>false</temporal>
+    </aggregate>
+<!-- AVERAGE -->
+    <aggregate>
+        <name>AVG</name>
+        <id>5</id>
+        <temporal>false</temporal>
+        <readerClass>net.tinyos.tinydb.AverageReader</readerClass>
+    </aggregate>
+<!-- EXP AVERAGE -->
+    <aggregate>
+        <name>EXPAVG</name>
+        <id>6</id>
+        <temporal>true</temporal>
+        <argcount>1</argcount>
+    </aggregate>
+<!-- WIN AVERAGE -->
+    <aggregate>
+        <name>WINAVG</name>
+        <id>7</id>
+        <temporal>true</temporal>
+        <argcount>2</argcount>
+        <validatorClass>net.tinyos.tinydb.WindowingArgumentValidator</validatorClass>
+        <readerClass>net.tinyos.tinydb.AverageReader</readerClass>
+    </aggregate>
+<!-- WIN SUM -->
+    <aggregate>
+        <name>WINSUM</name>
+        <id>8</id>
+        <temporal>true</temporal>
+        <argcount>2</argcount>
+        <validatorClass>net.tinyos.tinydb.WindowingArgumentValidator</validatorClass>
+    </aggregate>
+<!-- WIN MIN -->
+    <aggregate>
+        <name>WINMIN</name>
+        <id>9</id>
+        <temporal>true</temporal>
+        <argcount>2</argcount>
+        <validatorClass>net.tinyos.tinydb.WindowingArgumentValidator</validatorClass>
+    </aggregate>
+<!-- WIN MAX -->
+    <aggregate>
+        <name>WINMAX</name>
+        <id>10</id>
+        <temporal>true</temporal>
+        <argcount>2</argcount>
+      	<validatorClass>net.tinyos.tinydb.WindowingArgumentValidator</validatorClass>
+    </aggregate>
+<!-- WIN COUNT -->
+    <aggregate>
+        <name>WINCNT</name>
+        <id>11</id>
+        <temporal>true</temporal>
+        <argcount>2</argcount>
+        <validatorClass>net.tinyos.tinydb.WindowingArgumentValidator</validatorClass>
+    </aggregate>
+<!-- DELTA -->
+    <aggregate>
+		<name>DELTA</name>
+        <id>12</id>
+        <temporal>true</temporal>
+        <argcount>2</argcount>
+        <validatorClass>net.tinyos.tinydb.WindowingArgumentValidator</validatorClass>
+    </aggregate>
+<!-- TREND -->
+    <aggregate>
+		<name>TREND</name>
+        <id>13</id>
+        <temporal>true</temporal>
+        <argcount>3</argcount>
+        <validatorClass>net.tinyos.tinydb.WindowingArgumentValidator</validatorClass>
+    </aggregate>
+<!-- WIN RAND -->
+    <aggregate>
+		<name>WINRAND</name>
+        <id>14</id>
+        <temporal>true</temporal>
+        <argcount>2</argcount>
+        <validatorClass>net.tinyos.tinydb.WindowingArgumentValidator</validatorClass>
+    </aggregate>
+<!-- ADP DELTA -->
+    <aggregate>
+		<name>ADPDELTA</name>
+        <id>15</id>
+        <temporal>true</temporal>
+        <argcount>2</argcount>
+    </aggregate>
+<!-- WAVELET -->
+	<aggregate>
+		<name>WAVELET</name>
+		<id>17</id>
+		<temporal>false</temporal>
+		<readerClass>net.tinyos.tinydb.WaveletReader</readerClass>
+	</aggregate>
+</aggregates>
+
+
+<predefinedQueries>
+	<query>select avg(light)</query>
+	<query>select winmax(2,1,nodeid)</query>
+        <query>select nodeid where light > 100 and nodeid = 10</query>
+        <query>create buffer sam size 5 (nodeid uint16, light uint16)</query>
+        <query>select nodeid,light into sam</query>
+        <query>select nodeid,light from sam</query>
+</predefinedQueries>
+
+</catalog>

@@ -1,0 +1,30 @@
+#we expect these queries to work
+select nodeid
+select light
+select light,temp
+select light,temp,voltage,nodeid,parent,accel_x,accel_y
+select max(light)
+select count(light)
+select count(light),max(light)
+select count(light),max(temp)
+select count(light),max(temp),min(voltage),sum(nodeid)
+select light where light > 400
+select light where light < 400
+select light where temp > 400
+select light,temp where light > 200 and temp < 100
+select light + 10
+select light + 10, temp / 10
+select avg(light + 10)
+select light where (light / 10) > 50
+select avg(light) group by nodeid
+select avg(light),min(temp) group by nodeid
+select avg(light),nodeid group by nodeid
+select light where light < 400 output action SetSnd(512)
+select light epoch duration 400
+select light epoch duration 2000
+select light epoch duration 18124
+
+#and these queries to fail
+select light epoch duration 123456
+select avg(light) group by light
+select avg(light),temp
