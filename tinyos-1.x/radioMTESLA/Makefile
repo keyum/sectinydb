@@ -1,0 +1,3 @@
+COMPONENT=sim
+include Makerules
+

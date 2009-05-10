@@ -1,0 +1,81 @@
+TOS = $(shell ncc -print-tosdir)
+PACKAGE = net.tinyos.tinydb
+INCLUDES = -I $(TOS)/lib/Commands -I $(TOS)/lib/Util -I $(TOS)/lib/Attributes -I $(TOS)/lib/TinyDB -I $(TOS)/sensorboards/micasb -I $(TOS)/lib/TinyDB/Aggregates -I$(TOS)/lib/FS/ -I$(TOS)/lib/MintRoute -I$(TOS)/lib/Queue -I$(TOS)/../apps/TASKApp
+
+SRC = $(wildcard *.java) $(wildcard topology/*.java) $(wildcard tests/*.java)
+JAVA = $(SRC)
+CLASSES = $(JAVA:.java=.class)
+
+all: message util sf sim QueryResultMsg.java QueryMsg.java UartMsg.java CommandMsg.java StatusMsg.java MultiHopMsg.java NetworkMsg.java aparser $(JAVA) $(CLASSES)
+
+# general rule for java files
+%.class: %.java
+	javac $<
+
+QueryResultMsg.java:
+	$(MIG) $(INCLUDES) -java-classname=$(PACKAGE).QueryResultMsg $(TOS)/../apps/TinyDBApp/TinyDBApp.nc QueryResult -o $@
+
+QueryMsg.java:
+	$(MIG) $(INCLUDES) -java-classname=$(PACKAGE).QueryMsg $(TOS)/../apps/TinyDBApp/TinyDBApp.nc QueryMessage -o $@
+
+NetworkMsg.java:
+	$(MIG) $(INCLUDES) -java-classname=$(PACKAGE).NetworkMsg $(TOS)/../apps/TinyDBApp/TinyDBApp.nc NetworkMessage -o $@
+
+UartMsg.java:
+	$(MIG) $(INCLUDES) -java-classname=$(PACKAGE).UartMsg $(TOS)/../apps/TinyDBApp/TinyDBApp.nc UartMsg -o $@
+
+CommandMsg.java:
+	$(MIG) $(INCLUDES) -java-classname=$(PACKAGE).CommandMsg $(TOS)/../apps/TinyDBApp/TinyDBApp.nc CommandMsg -o $@
+
+StatusMsg.java:
+	$(MIG) $(INCLUDES) -java-classname=$(PACKAGE).StatusMsg $(TOS)/../apps/TinyDBApp/TinyDBApp.nc StatusMessage -o $@
+
+MultiHopMsg.java:
+	$(MIG) $(INCLUDES) -java-classname=$(PACKAGE).MultiHopMsg $(TOS)/../apps/TASKApp/TASKApp.nc MultihopMsg -o $@
+
+
+#topology: $(wildcard topology/*.java)
+#%	javac $<
+
+message:
+	cd ../message
+	$(MAKE) -C ../message -f Makefile
+
+util:
+	cd ../util
+	$(MAKE) -C ../util -f Makefile
+
+sim:
+	cd ../sim
+	$(MAKE) -C ../sim -f Makefile
+
+sf:
+	cd ../sf
+	$(MAKE) -C ../sf -f Makefile
+
+text:
+	java net.tinyos.tinydb.TinyDBMain -text
+
+gui:
+	java net.tinyos.tinydb.TinyDBMain -gui
+
+run:
+	java net.tinyos.tinydb.TinyDBMain
+
+aparser:
+	cd parser
+	$(MAKE) -C parser -f Makefile
+#	javac parser/senseParser.java
+
+clean:
+	rm -f QueryMsg.java QueryResultMsg.java UartMsg.java CommandMsg.java StatusMsg.java MultiHopMsg.java NetworkMsg.java
+	rm -rf *.class
+	rm -rf topology/*.class topology/*/*.class
+	rm -rf tests/*.class
+	rm -rf awtextra/*.class
+	$(MAKE) -C parser clean
+	$(MAKE) -C ../sf clean
+	$(MAKE) -C ../message clean
+	$(MAKE) -C ../util clean
+#	$(MAKE) -C ../sim clean
+

@@ -1,0 +1,6 @@
+COMPONENT=TinyDBApp
+SENSORBOARD=micasb
+PFLAGS=-I../../tos/lib/Attributes -I ../../tos/lib/Util -I../../tos/lib/Commands -I../../tos/lib/TinyDB -I../../tos/lib/MintRoute -I../../tos/lib/Queue -I../../tos/lib/FS -I../../tos/lib/TinyDB/Aggregates
+MSG_SIZE=58
+include ../Makerules
+
