@@ -179,6 +179,7 @@ module TupleRouterM {
 	interface StdControl as PoochHandler;
 	interface WDT;
 #endif
+    interface SHA1;
 
     async command void setSimpleTimeInterval(uint16_t new_interval);
     async command uint16_t getSimpleTimeInterval();
@@ -419,6 +420,8 @@ implementation {
   uint16_t mHSNValue;
   uint16_t mNumMerges;
 #endif
+
+  SHA1Context *sha1Ctx;
 
   /* ----------------- Functions to modify pending mask --------------------- */
  
@@ -677,6 +680,9 @@ implementation {
 	mHSNValue = 20; // XXX 20 is an arbitrary initial value
 #endif
 	mIsFirstStart = TRUE;
+
+    sha1Ctx = (SHA1Context*) malloc(sizeof(SHA1Context));
+
     return SUCCESS;
   }
 
@@ -814,6 +820,7 @@ implementation {
     }
 #endif
 
+    free(sha1Ctx);
 
     return SUCCESS;
   }
@@ -1876,10 +1883,17 @@ implementation {
 	//shouldn't abort
 	if (err != err_ResultBufferBusy && err != err_NoError) TDB_SIG_ERR(err);
       } else { //got an agg -- do all the aggregation expressions
+int i;
 	mResult = qr;
 #ifdef HSN_ROUTING
 	mNumMerges++;
 #endif
+dbg(DBG_USR1, "HEHEHEHEHEHHEHEHEHEH in DATASUB qid %d epoch %d result_idx %d qrType %d\n",qr.qid,qr.epoch,qr.result_idx,qr.qrType);
+dbg(DBG_USR1, "HEHEHE in HASH RECEIVED DATASUB ");
+for (i=0;i<SHA1HashSize;i++) {
+	printf("%02X ",qr.dHash[i]);
+}
+printf("\n");
 	if (!IS_AGGREGATING_RESULT()) //don't double aggregate!
 	  aggregateResult(q, &mResult, 0);
       }
@@ -2338,7 +2352,7 @@ event result_t AbsoluteTimer.fired() {
 #endif
 	} else {
 	  if (getQuery(mEnqResult.qid, &pq)) {
-	    
+dbg(DBG_USR1, "HEHEHEHEHE DELIVERWAIT\n\n\n");	    
 	    err = call DBBuffer.enqueue(pq->bufferId, &mEnqResult, &pending, pq);
 	    
 	    //ignore result buffer busy items for now, since they just mean
@@ -2353,6 +2367,7 @@ event result_t AbsoluteTimer.fired() {
       }else
 	return;
     } else {
+dbg(DBG_USR1, "HEHEHEHEHE SEND QUERY\n\n\n");	    
 
       if (mSendQueryNextClock) {
 	mSendQueryNextClock = FALSE;
@@ -2450,6 +2465,7 @@ event result_t AbsoluteTimer.fired() {
   
     // if (IS_SENDING_MESSAGE()) return; //wait til networking send is done...
     dbg(DBG_USR3,"IN DELIVER TUPLES TASK.\n");//fflush(stdout);
+    dbg(DBG_USR1,"HEHEHEHE IN DELIVER TUPLES TASK.\n");//fflush(stdout);
     SET_DELIVERING_TUPLES();
     
     if (mCurRouteQuery != NULL) {
@@ -2501,12 +2517,14 @@ event result_t AbsoluteTimer.fired() {
       if (didAgg && err == err_NoError && call QueryResultIntf.numRecords(&qr,pq) > 0) {
 	//enqueue all the results from this aggregate
 
+dbg(DBG_USR1,"HEHEHEHE SEND TUPLE1\n");//fflush(stdout);
 	mEnqResult = qr;
 	mWaitIsDummy = FALSE;
 	err = sendTuple(pq, &mEnqResult, &pending);
 
       }  else if (success && !didAgg) {       //just a selection query -- enqueue appropriate results
 
+dbg(DBG_USR1,"HEHEHEHE SEND TUPLE2\n");//fflush(stdout);
 
 	mEnqResult = qr;
 
@@ -2551,6 +2569,7 @@ event result_t AbsoluteTimer.fired() {
 	  //pending results can filter up the routing tree.
 	  pq->markedForDeletion = EPOCHS_TIL_DELETION; //we need to destroy this query asap
 	}
+dbg(DBG_USR1,"HEHEHEHE POST DELIVER TUPLE TASK\n");//fflush(stdout);
       //send tuples for next query
       if (!pending) post deliverTuplesTask();
       mCurExpr = -1; //reset for next query
@@ -2604,11 +2623,13 @@ event result_t AbsoluteTimer.fired() {
 
     call queryResultHook(pq->bufferId, qr, pq);
     if (pq->clocksPerSample > kMIN_SLEEP_CLOCKS_PER_SAMPLE) {
+dbg(DBG_USR1,"HEHEHEHE SEND TUPLE DELAYED\n");//fflush(stdout);
       if (TOS_LOCAL_ADDRESS == 0)
 	dbg(DBG_USR1, "enqueuing tuple \n");
       mDeliverWait = (call Random.rand() % kMAX_WAIT_CLOCKS) + 1; //number of kCLOCK_MS_PER_SAMPLE ms periods to wait
       *pending = TRUE;
     } else {
+dbg(DBG_USR1,"HEHEHEHE SEND TUPLE NOW\n");//fflush(stdout);
       err = call DBBuffer.enqueue(pq->bufferId, qr, pending, pq);
       
       //ignore result buffer busy items for now, since they just mean
@@ -3724,8 +3745,10 @@ event result_t AbsoluteTimer.fired() {
 	if (!IS_SENDING_MESSAGE())
 	{
 		QueryResultPtr newQrMsg;
+		int i;
 		SET_SENDING_MESSAGE();
-		
+dbg(DBG_USR1, "HEHEHEHE in RADIOQUEUE.ENQUEUE kMSG_LEN %d TOSH_DATA_LENGTH %d QueryResult %d\n",kMSG_LEN,TOSH_DATA_LENGTH,sizeof(QueryResult));
+
 		newQrMsg = call Network.getDataPayLoad(&mMsg);
 		*newQrMsg = *qrMsg;
 		*pending = TRUE;
@@ -3735,6 +3758,24 @@ event result_t AbsoluteTimer.fired() {
 		  mTimestampMsg = &mMsg;
 		  mMustTimestamp = TS_QUERY_RESULT_MESSAGE;
 		}
+
+dbg(DBG_USR1, "HEHEHE RADIOQUEUE.ENQUEUE DATA ");
+for (i=0;i<AGG_DATA_LEN;i++) {
+	printf("%d ",newQrMsg->d.data[i]);
+}
+printf("\n");
+		//hash data
+		call SHA1.reset(sha1Ctx);
+		call SHA1.update(sha1Ctx, newQrMsg->d.data, AGG_DATA_LEN);
+		call SHA1.digest(sha1Ctx, newQrMsg->dHash);
+dbg(DBG_USR1, "HEHEHE HASH SENDING ");
+for (i=0;i<SHA1HashSize;i++) {
+	printf("%02X ",newQrMsg->dHash[i]);
+}
+printf("\n");
+dbg(DBG_USR1, "HEHEHEHE in RADIOQUEUE.ENQUEUE BEFORE NETWORK SENDDATAMSG kMSG_LEN %d\n",kMSG_LEN);
+dbg(DBG_USR1, "HEHEHEHE in RADIOQUEUE.ENQUEUE qid %d epoch %d result_idx %d qrType %d\n",newQrMsg->qid, newQrMsg->epoch, newQrMsg->result_idx, newQrMsg->qrType);
+
 		if (call Network.sendDataMessage(&mMsg) != err_NoError) {
 		  //call PowerMgmtEnable();
 		  mSendFailed ++;

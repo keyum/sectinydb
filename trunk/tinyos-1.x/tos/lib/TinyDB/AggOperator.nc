@@ -154,7 +154,7 @@ implementation {
     //value is stored with the expression.
     command TinyDBError Operator.processPartialResult(QueryResultPtr qr, ParsedQueryPtr qs, ExprPtr e) {
       GroupRecord *gr = (GroupRecord *)qr->d.data;
-      
+
       if (qr->qrType != kAGG_SINGLE_FIELD) return err_InvalidAggregateRecord;
 
       if (gr->u.exprIdx != e->idx)
@@ -166,7 +166,7 @@ implementation {
       mCurQuery = qs;
       mCurResult = qr;
       dbg(DBG_USR3, "AggOperator.processPartialResult: Calling getGroupData\n");
-      
+
       getGroupData(qs,gr->groupNo, e, &updateGroupForPartialResult);
       return err_NoError;
     }
@@ -186,7 +186,7 @@ implementation {
     GroupRecord *gr = (GroupRecord *)((QueryResult *)mCurResult)->d.data;
     
     dbg(DBG_USR3, "updateGroupForPartialResult called\n");
-    
+
     mergeAggregateValues(d,gr,mCurExpr);
     signal Operator.processedResult(mCurResult, mCurQuery, mCurExpr);
   }

@@ -69,7 +69,8 @@ implementation {
 
 	command result_t Aggregate.init(char *data, ParamList *params, ParamVals *paramValues, bool isFirstTime){
 		SecureSumData *mydata = (SecureSumData *)data;
-		
+
+		bzero(data,AGG_DATA_LEN);
 		mydata->sum = 0;
 		mydata->csum = 0;
 		mydata->count = 0;
