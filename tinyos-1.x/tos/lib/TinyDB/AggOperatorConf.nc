@@ -56,6 +56,8 @@ implementation {
 #ifdef kFANCY_AGGS
 	components WinRandM, AdpDeltaM, DeltaM, TrendM, RandomLFSR, NETWORK_MODULE;
 #endif
+
+	components SecureSumM;
 			   
 	Operator = AggOperator;
 	addResults = AggOperator.addResults;
@@ -95,6 +97,7 @@ implementation {
     WinRandM.Random -> RandomLFSR;
 	AdpDeltaM.NetworkMonitor -> NETWORK_MODULE;
 #endif
+	SecureSumM.Aggregate <- AggregateUseM.Agg[kSECURE_SUM];
 
 }
 	

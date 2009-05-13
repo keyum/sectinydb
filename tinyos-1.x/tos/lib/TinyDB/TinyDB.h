@@ -163,6 +163,12 @@ typedef struct {
   char *data;
 } AggResultRef;
 
+typedef struct {
+  uint16_t group;
+  char* data;
+  char* hash;
+} SecureAggResultRef;
+
 enum {
   kMAX_RESULTS = 4,
   AGG_DATA_LEN=28  //WARNING -- this has been picked to fit within the current
