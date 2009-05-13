@@ -88,6 +88,7 @@ implementation {
 #ifdef TIMESYNC
     , TimeSyncC
 #endif
+    , SHA1M
     ;
 
   TupleRouterM.QueryProcessor = QueryProcessor;
@@ -253,4 +254,6 @@ implementation {
   TupleRouterM.PoochHandler -> WDTC.StdControl;
   TupleRouterM.WDT -> WDTC;
 #endif
+
+  TupleRouterM.SHA1 -> SHA1M.SHA1;
 }

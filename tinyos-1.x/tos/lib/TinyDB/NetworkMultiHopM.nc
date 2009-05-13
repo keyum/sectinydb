@@ -170,11 +170,22 @@ implementation
 
 	event result_t DelayTimerA.fired() 
 	{
+int len,i;
+QueryResult* r = (QueryResultPtr) call Send.getBuffer(gpSendDataMessage,&len);
+dbg(DBG_USR1, "HEHEHEHEHEHHEHEHEHEH in DELAYTIMERA qid %d epoch %d result_idx %d qrType %d\n",r->qid, r->epoch, r->result_idx, r->qrType);
+dbg(DBG_USR1, "HEHEHEHEHEHEHEHEHE DELAYTIMERA.fired %d\n",kMSG_LEN);
+dbg(DBG_USR1, "HEHEHE in HASH DELAYTIMERA ");
+for (i=0;i<SHA1HashSize;i++) {
+	printf("%02X ",r->dHash[i]);
+}
+printf("\n");
+
 		return call Send.send(gpSendDataMessage, sizeof(QueryResult));
 	}
 
 	event result_t DelayTimerB.fired()
 	{
+dbg(DBG_USR1, "HEHEHEHEHEHEHEHEHE DELAYTIMERB.fired %d\n",kMSG_LEN);
 		return call SendDataMsg.send(gTo, kMSG_LEN, gpSendDataMsgTo);
 	}
 
@@ -327,6 +338,8 @@ implementation
 		call WDT.reset();
 #endif
 		call Leds.greenToggle();
+
+dbg(DBG_USR1, "HEHEHE RECEIVE MESSAGE SOURCE ADDRESS = %d\n",sender);
 
 		updateNeighbors(msg);
 		if (call QueryProcessor.queryProcessorWantsData(qr)) {

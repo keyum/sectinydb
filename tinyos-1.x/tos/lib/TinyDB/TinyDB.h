@@ -43,7 +43,7 @@
  * @author and Joe Hellerstein
  */
 
-
+#include "sha1.h"
 
 uint8_t combine_tdberr(uint8_t r1, uint8_t r2);
 typedef uint8_t TinyDBError 
@@ -163,12 +163,6 @@ typedef struct {
   char *data;
 } AggResultRef;
 
-typedef struct {
-  uint16_t group;
-  char* data;
-  char* hash;
-} SecureAggResultRef;
-
 enum {
   kMAX_RESULTS = 4,
   AGG_DATA_LEN=28  //WARNING -- this has been picked to fit within the current
@@ -195,7 +189,7 @@ typedef struct QueryResult {
     // to internal data structures.
     AggResultRef buf[kMAX_RESULTS]; //pointers for results -- qrType == kIS_AGG
   } d;
-  
+  uint8_t dHash[SHA1HashSize];
 } QueryResult, *QueryResultPtr;
 
 
