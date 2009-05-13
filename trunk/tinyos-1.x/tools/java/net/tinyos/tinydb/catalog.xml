@@ -291,6 +291,12 @@
 		<temporal>false</temporal>
 		<readerClass>net.tinyos.tinydb.WaveletReader</readerClass>
 	</aggregate>
+	<aggregate>
+		<name>SECURESUM</name>
+		<id>16</id>
+		<temporal>false</temporal>
+		<readerClass>net.tinyos.tinydb.SecureSumReader</readerClass>
+	</aggregate>
 </aggregates>
 
 
