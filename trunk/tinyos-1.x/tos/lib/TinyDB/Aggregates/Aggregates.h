@@ -55,6 +55,7 @@ typedef enum {
   kTREND = 13,
   kWIN_RAND = 14,
   kADP_DELTA = 15,
+  kSECURE_SUM = 16,
 } AggregateID;
 
 
@@ -80,6 +81,12 @@ typedef struct {
 	int16_t sum;
 	uint16_t count;
 } AverageData;
+
+typedef struct {
+	int16_t sum;
+	int16_t csum;
+	uint16_t count;
+} SecureSumData;
 
 // NOTE: Following 3 structs should be in AdpDeltaM.nc,
 // but AggOperator needs to handle AdpDelta specially in one place (BAD thing)
