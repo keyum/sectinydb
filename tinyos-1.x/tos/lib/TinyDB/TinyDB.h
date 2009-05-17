@@ -441,6 +441,7 @@ typedef struct {
 	MODIFY_MSG = 2,
 	RATE_MSG = 3,
 	DROP_TABLE_MSG = 5
+	,CHECK_RESULT = 6
   };
 
 enum {

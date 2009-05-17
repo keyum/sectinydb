@@ -69,13 +69,20 @@ module AggOperator {
 implementation {
   
   #define TDB_SIG_ERR(errNo) call signalError((errNo), __LINE__)
-  
+
+  typedef struct {
+    void *next;
+    QueryResult qr;
+    int aged;
+  } QueryResultListEl, *QueryResultListPtr;
+ 
   typedef struct {
     int numGroups; //how many groups are there
     int groupSize; //how many bytes per group
     char groupData[1];  //data for groups -- depends on type of aggregate -- of size groupSize * numGroups
+    QueryResultListPtr qrl;
   } GroupData, *GroupDataPtr, **GroupDataHandle;
-  
+
   typedef struct {
     short groupNo;//2
     union {
@@ -279,7 +286,8 @@ implementation {
     mCurExpr = e;
     mCurQuery = qs;
     mCurTuple = t;
-    dbg(DBG_USR1,"in PROCESS_TUPLE, expr = %x\n", (unsigned int)mCurExpr);//fflush(stdout);
+    if (TOS_LOCAL_ADDRESS==0) // my
+      dbg(DBG_USR1,"in PROCESS_TUPLE, expr = %x\n", (unsigned int)mCurExpr);//fflush(stdout);
     if (e->opState == (OperatorStateHandle)QUERY_DONE_STATE) return err_NoError;
     getGroupData(qs, getGroupNo(t,qs,e) , e, &updateGroupForTuple);
     return err_NoError;
@@ -313,7 +321,9 @@ implementation {
       Expr e = (call ParsedQueryIntf.getExpr(q, i));
       if (e.opType != kSEL && (e.opState !=  NULL)) {
 	call MemAlloc.free((Handle)e.opState);
-	dbg(DBG_USR1, "Agg: cleaning up.\n");
+	if (TOS_LOCAL_ADDRESS==0) { // my
+	  dbg(DBG_USR1, "Agg: cleaning up.\n");
+	}
 	e.opState = (OperatorStateHandle)QUERY_DONE_STATE; //mark it as empty!
       }
     }
@@ -352,13 +362,16 @@ implementation {
 
     if (h != (Handle *)mAlloced) return SUCCESS; //not for us
     mAlloced = NULL;
-    dbg(DBG_USR1, "In allocComplete\n");
+    if (TOS_LOCAL_ADDRESS==0) // my
+      dbg(DBG_USR1, "In allocComplete\n");
     if (!success) {
-      dbg(DBG_USR1,"Error! Couldn't allocate aggregate data!");
+      if (TOS_LOCAL_ADDRESS==0) // my
+        dbg(DBG_USR1,"Error! Couldn't allocate aggregate data!");
       TDB_SIG_ERR(err_OutOfMemory);
 	  return FAIL;
     }
-    dbg(DBG_USR1,"in AGG_ALLOC_DONE, expr = %x\n", (unsigned int)mCurExpr);//fflush(stdout);
+    if (TOS_LOCAL_ADDRESS==0) // my
+      dbg(DBG_USR1,"in AGG_ALLOC_DONE, expr = %x\n", (unsigned int)mCurExpr);//fflush(stdout);
     (**dh).groupSize = groupSize(mCurExpr);
     (**dh).numGroups = 0;
     newGroup = addGroup(dh, mCurGroup);
@@ -376,7 +389,8 @@ implementation {
   
     if (h != (Handle)mAlloced) return SUCCESS; //not for us
     mAlloced = NULL;
-    dbg(DBG_USR1, "In reallocComplete\n");
+    if (TOS_LOCAL_ADDRESS==0) // my
+      dbg(DBG_USR1, "In reallocComplete\n");
     if (!success) {
       if (!removeEmptyGroup((GroupDataHandle)h)) { //check for empty groups -- if there are any, reuse them
 	//maybe try to evict -- may be not possible
@@ -438,7 +452,8 @@ implementation {
     }
 
     if (!found) return FALSE;
-    dbg(DBG_USR1,"found empty = %d\n", lastEmpty);
+    if (TOS_LOCAL_ADDRESS==0) // my
+      dbg(DBG_USR1,"found empty = %d\n", lastEmpty);
     //now shift everything after that group up one
     for (i = lastEmpty + 1; i < (**dh).numGroups; i++) {
       gr = GET_GROUP_DATA(dh,i);
@@ -500,7 +515,8 @@ implementation {
     mCurExpr = e;
     mCurQuery = pq;
     mCurGroup = groupNo;
-    dbg(DBG_USR1, "In getGroupData, groupNo = %d, dh = %x\n", groupNo, dh);
+    if (TOS_LOCAL_ADDRESS==0) // my
+      dbg(DBG_USR1, "In getGroupData, groupNo = %d, dh = %x\n", groupNo, dh);
     if (dh == NULL) {
       //we've got to allocate this baby
       mAlloced = (Handle) &e->opState; //ick

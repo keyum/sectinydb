@@ -225,14 +225,41 @@ implementation {
     STATE_RESIZE_QUERY,
     STATE_NOT_ALLOCING,
     STATE_ALLOC_QUERY_RESULT
+    //,STATE_ALLOC_QUERY_RESULT_LIST_EL
   } AllocState;
-  
+
   /** Linked list to track queries currently being processed */
   typedef struct {
-    void **next;
+    //void **next;
+    void* next;
     ParsedQuery q;
   } *QueryListPtr, **QueryListHandle, QueryListEl;
-  
+
+  /** Linked list to track query results received from children */
+  typedef struct {
+    void **next;
+    QueryResult qr;
+  } QueryResultListEl, *QueryResultListPtr, **QueryResultListHandle;
+
+  // TODELETE
+   typedef struct {
+    short groupNo;//2
+    union {
+      bool empty;
+      char exprIdx; //idx of operator that owns us
+    } u;//3
+    char aggdata[1];//aggregate-dependent data of variable size
+    //size of this space returned as part of groupSize() value
+  } __attribute__((packed)) MyGroupRecord;
+
+  typedef struct {
+	int16_t sum;
+	int16_t csum;
+	uint16_t count;
+  } MySecureSumData;
+
+
+
   /** Completion routine for memory allocation complete */
   typedef void (*MemoryCallback)(Handle *memory);
 
@@ -318,8 +345,12 @@ implementation {
   Query **mCurQuery; //dynamically allocated query handle
   Query *mCurQueryPtr;
 
-  Handle mTmpHandle;
+  //QueryResultListHandle mQRs;
+  //QueryResult mQRAlloc;
+  QueryResultListPtr mQRs;
+  int mQRcount;
 
+  Handle mTmpHandle;
 
   MemoryCallback mAllocCallback; //function to call after allocation
 
@@ -494,7 +525,9 @@ implementation {
   bool addQueryField(QueryMessagePtr qmsg);
   bool allocPendingQuery(MemoryCallback callback, Query *q);
   bool allocQuery(MemoryCallback callback, Query *q);
+  bool allocQueryResultListEl(MemoryCallback callback, QueryResult *qr);
   void parsedCallback(Handle *memory);
+  void queryresultCallback(Handle *memory);
   bool parseQuery(Query *q, ParsedQuery *pq);
   void parsedQuery(bool success);
   void continueParsing(result_t success);
@@ -507,6 +540,13 @@ implementation {
   void finishedOpeningWriteBuffer(ParsedQuery *pq);
   void finishedOpeningReadBuffer(ParsedQuery *pq, uint8_t bufferId);
   void continueFromBufferFetch(TinyDBError err);
+
+  result_t saveQueryResult(QueryResult* qr);
+  void clearQueryResultList();
+  void removeQueryResult(int qid, int epoch);
+  void dumpQueryResultList();
+  void dumpResultInQueryResult(QueryResult *qr, int received);
+  void setResultInQueryResult(QueryResult *qr, int sum, int csum, int count);
 
   void setRate(uint8_t qid, uint16_t epochDur);
 
@@ -623,6 +663,8 @@ implementation {
     mCycleToSend = 0;
     atomic {
       mQs = NULL;
+      mQRs = NULL;
+      mQRcount = 0;
     }
     mTail = NULL;
     mCurQuery = NULL;
@@ -1019,6 +1061,12 @@ implementation {
       qmsgCopy->fwdNode = TOS_LOCAL_ADDRESS;
       mMustTimestamp = TS_QUERY_MESSAGE;
       mTimestampMsg = &mMsg;
+
+      //if (TOS_LOCAL_ADDRESS==0) {
+	dbg(DBG_USR1, "HEHEHE forwardQuery qid %d fwdNode %d msgType %d numFields %d numExprs %d\n",
+		qmsg->qid, qmsg->fwdNode, qmsg->msgType, qmsg->numFields, qmsg->numExprs);
+      //}
+
       post queryMsgTask();
       //if (call Network.sendQueryMessage(&mMsg) != err_NoError) {
       //atomic {
@@ -1176,6 +1224,12 @@ implementation {
       return;
     } 
   }
+
+  void queryresultCallback(Handle *memory) {
+    QueryResultListHandle h = (QueryResultListHandle)*memory;  //this has already been allocated
+    call MemAlloc.lock((Handle)h);
+    mTmpHandle = (Handle)h;
+   }
 
   /** Callback routine that indicates parsing is complete */
   void parsedQuery(bool success) {
@@ -1888,18 +1942,87 @@ int i;
 #ifdef HSN_ROUTING
 	mNumMerges++;
 #endif
-dbg(DBG_USR1, "HEHEHEHEHEHHEHEHEHEH in DATASUB qid %d epoch %d result_idx %d qrType %d\n",qr.qid,qr.epoch,qr.result_idx,qr.qrType);
-dbg(DBG_USR1, "HEHEHE in HASH RECEIVED DATASUB ");
-for (i=0;i<SHA1HashSize;i++) {
-	printf("%02X ",qr.dHash[i]);
-}
-printf("\n");
+
+	dbg(DBG_USR1, "HEHEHE HASH RECEIVED ");
+	for (i=0;i<SHA1HashSize;i++) {
+		printf("%02X ",qr.dHash[i]);
+	}
+	printf("epoch %d", qr.epoch);
+	printf("\n");
+
+	if (TOS_LOCAL_ADDRESS==0) {
+		dumpResultInQueryResult(&qr,1);
+	}
+
 	if (!IS_AGGREGATING_RESULT()) //don't double aggregate!
 	  aggregateResult(q, &mResult, 0);
+
+	// add this QueryResult to our internal list, will free later`
+	//allocQueryResultListEl(&queryresultCallback,&mResult);
+        //dumpQueryResultList();
+	saveQueryResult(&mResult);
+        //dumpQueryResultList();
       }
     } 
 
     return SUCCESS;
+  }
+
+  void dumpResultInQueryResult(QueryResult *qr, int received) {
+    MyGroupRecord * gr = (MyGroupRecord*)qr->d.data;
+    MySecureSumData * sum = (MySecureSumData*)gr->aggdata;
+    dbg(DBG_USR1, "HEHEHE RESULT %s qid %d epoch %d sum %d csum %d count %d\n",received?"RECEIVED":"SEND",qr->qid,qr->epoch,sum->sum,sum->csum,sum->count);
+  }
+
+  void setResultInQueryResult(QueryResult *qr, int sum, int csum, int count) {
+    MyGroupRecord * gr = (MyGroupRecord*)qr->d.data;
+    MySecureSumData * s = (MySecureSumData*)gr->aggdata;
+    s->sum= sum;
+    s->csum = csum;
+    s->count = count;
+  }
+
+  void dumpQueryResultList() {
+    QueryResultListPtr qrl = mQRs;
+    int count=0;
+    dbg(DBG_USR1, "HEHEHE Current query result list (qid,epoch): ");
+    while (qrl) {
+      printf ("(%d, %d), ", qrl->qr.qid, qrl->qr.epoch);
+      count++;
+      qrl = (QueryResultListPtr) qrl->next;
+    }
+    printf(" Count %d\n",count);
+  }
+
+  result_t saveQueryResult(QueryResult* qr) {
+    atomic {
+      QueryResultListEl* qrle = (QueryResultListEl*)malloc(sizeof(QueryResultListEl));
+      if (NULL==qrle) {
+        dbg(DBG_USR1, "HEHEHE NOT ENOUGH MEMORY TO SAVE QUERYRESULT\n");
+        return FAIL;
+      }
+      qrle->qr = *qr;
+      qrle->next = (void*) mQRs;
+      mQRs = qrle;
+      mQRcount++;
+    }
+    return SUCCESS;
+  }
+
+  void clearQueryResultList() {
+    QueryResultListPtr temp;
+    while (mQRs) {
+      atomic {
+        temp = mQRs;
+        mQRs = (QueryResultListPtr)mQRs->next;
+      }
+      free(temp);
+    }
+    mQRcount = 0;
+  }
+
+  void removeQueryResult(int qid, int epoch) {
+    return;
   }
 
   default command result_t queryResultHook(uint8_t bufferId, QueryResultPtr r,
@@ -1919,6 +2042,9 @@ printf("\n");
 */
   void aggregateResult(ParsedQuery *q, QueryResult *qr, char exprId) {
     Expr *e;
+
+    //if (TOS_LOCAL_ADDRESS==0)
+    //  dbg(DBG_USR1,"HEHEHE in aggregateResult q->numExprs = %d\n",q->numExprs);
 
     if (exprId >= q->numExprs) { //no more aggregation expressions
       UNSET_AGGREGATING_RESULT();
@@ -2352,7 +2478,11 @@ event result_t AbsoluteTimer.fired() {
 #endif
 	} else {
 	  if (getQuery(mEnqResult.qid, &pq)) {
-dbg(DBG_USR1, "HEHEHEHEHE DELIVERWAIT\n\n\n");	    
+
+            //if (TOS_LOCAL_ADDRESS==0) {
+            //  dbg(DBG_USR1, "HEHEHE DELIVERWAIT=0 ENQUEUE qid %d epoch %d\n", mEnqResult.qid, mEnqResult.epoch);
+	    //}
+	    //if (mEnqResult.epoch%2==0) // my
 	    err = call DBBuffer.enqueue(pq->bufferId, &mEnqResult, &pending, pq);
 	    
 	    //ignore result buffer busy items for now, since they just mean
@@ -2367,7 +2497,7 @@ dbg(DBG_USR1, "HEHEHEHEHE DELIVERWAIT\n\n\n");
       }else
 	return;
     } else {
-dbg(DBG_USR1, "HEHEHEHEHE SEND QUERY\n\n\n");	    
+      //dbg(DBG_USR1, "HEHEHE SEND QUERY\n");	    
 
       if (mSendQueryNextClock) {
 	mSendQueryNextClock = FALSE;
@@ -2465,7 +2595,9 @@ dbg(DBG_USR1, "HEHEHEHEHE SEND QUERY\n\n\n");
   
     // if (IS_SENDING_MESSAGE()) return; //wait til networking send is done...
     dbg(DBG_USR3,"IN DELIVER TUPLES TASK.\n");//fflush(stdout);
-    dbg(DBG_USR1,"HEHEHEHE IN DELIVER TUPLES TASK.\n");//fflush(stdout);
+    //if (TOS_LOCAL_ADDRESS==0) 
+    //  dbg(DBG_USR1,"HEHEHE IN DELIVER TUPLES TASK.\n");//fflush(stdout);
+
     SET_DELIVERING_TUPLES();
     
     if (mCurRouteQuery != NULL) {
@@ -2517,14 +2649,19 @@ dbg(DBG_USR1, "HEHEHEHEHE SEND QUERY\n\n\n");
       if (didAgg && err == err_NoError && call QueryResultIntf.numRecords(&qr,pq) > 0) {
 	//enqueue all the results from this aggregate
 
-dbg(DBG_USR1,"HEHEHEHE SEND TUPLE1\n");//fflush(stdout);
+        if (TOS_LOCAL_ADDRESS==0) {
+	  MyGroupRecord * gr = (MyGroupRecord*)qr.d.data;
+	  MySecureSumData * temp = (MySecureSumData*) gr->aggdata;
+          //dbg(DBG_USR1,"HEHEHE SEND TUPLE1 qid %d epoch %d sum %d csum %d count %d\n\n\n\n",qr.qid, qr.epoch,temp->sum,temp->csum,temp->count);
+	}
 	mEnqResult = qr;
 	mWaitIsDummy = FALSE;
 	err = sendTuple(pq, &mEnqResult, &pending);
 
       }  else if (success && !didAgg) {       //just a selection query -- enqueue appropriate results
 
-dbg(DBG_USR1,"HEHEHEHE SEND TUPLE2\n");//fflush(stdout);
+        if (TOS_LOCAL_ADDRESS==0) 
+          dbg(DBG_USR1,"HEHEHE SEND TUPLE1 qid %d epoch %d\n",qr.qid, qr.epoch);//fflush(stdout);
 
 	mEnqResult = qr;
 
@@ -2569,7 +2706,10 @@ dbg(DBG_USR1,"HEHEHEHE SEND TUPLE2\n");//fflush(stdout);
 	  //pending results can filter up the routing tree.
 	  pq->markedForDeletion = EPOCHS_TIL_DELETION; //we need to destroy this query asap
 	}
-dbg(DBG_USR1,"HEHEHEHE POST DELIVER TUPLE TASK\n");//fflush(stdout);
+
+      if (TOS_LOCAL_ADDRESS==0)
+        dbg(DBG_USR1,"HEHEHE POST DELIVER TUPLE TASK\n");//fflush(stdout);
+
       //send tuples for next query
       if (!pending) post deliverTuplesTask();
       mCurExpr = -1; //reset for next query
@@ -2623,13 +2763,14 @@ dbg(DBG_USR1,"HEHEHEHE POST DELIVER TUPLE TASK\n");//fflush(stdout);
 
     call queryResultHook(pq->bufferId, qr, pq);
     if (pq->clocksPerSample > kMIN_SLEEP_CLOCKS_PER_SAMPLE) {
-dbg(DBG_USR1,"HEHEHEHE SEND TUPLE DELAYED\n");//fflush(stdout);
+      //dbg(DBG_USR1,"HEHEHE SEND TUPLE DELAYED\n");//fflush(stdout);
       if (TOS_LOCAL_ADDRESS == 0)
 	dbg(DBG_USR1, "enqueuing tuple \n");
+      // if (TOS_LOCAL_ADDRESS==0) mDeliverWait = 10; else // Thanh's hack
       mDeliverWait = (call Random.rand() % kMAX_WAIT_CLOCKS) + 1; //number of kCLOCK_MS_PER_SAMPLE ms periods to wait
       *pending = TRUE;
     } else {
-dbg(DBG_USR1,"HEHEHEHE SEND TUPLE NOW\n");//fflush(stdout);
+      dbg(DBG_USR1,"HEHEHE SEND TUPLE NOW\n");//fflush(stdout);
       err = call DBBuffer.enqueue(pq->bufferId, qr, pending, pq);
       
       //ignore result buffer busy items for now, since they just mean
@@ -3561,7 +3702,14 @@ dbg(DBG_USR1,"HEHEHEHE SEND TUPLE NOW\n");//fflush(stdout);
     return call MemAlloc.allocate((Handle *)&mTmpHandle, size);
   
   }
-
+/*
+  bool allocQueryResultListEl(MemoryCallback callback, QueryResult *qr) {
+    mAllocState = STATE_ALLOC_QUERY_RESULT_LIST_EL;
+    mAllocCallback = callback;
+    mQRAlloc = *qr;
+    return call MemAlloc.allocate((Handle *)&mTmpHandle, sizeof(QueryResultListEl));
+  }
+*/
   /** Resize qlh to have space for tuple at the end */
   bool reallocQueryForTuple(MemoryCallback callback, QueryListHandle qlh) {
     ParsedQuery *q = &(**qlh).q;
@@ -3695,6 +3843,31 @@ dbg(DBG_USR1,"HEHEHEHE SEND TUPLE NOW\n");//fflush(stdout);
 	UNSET_READING_QUERY();
       }
       break;
+/*
+    case STATE_ALLOC_QUERY_RESULT_LIST_EL:
+      mAllocState = STATE_NOT_ALLOCING; //not allocating any more
+      if (complete) {
+
+	QueryResultListHandle qrlh = (QueryResultListHandle)*handle;
+	dbg(DBG_USR1,"HEHEHE alloced query result\n");
+
+	(**qrlh).qr = mQRAlloc;
+
+	atomic {
+	  if (mQRs == NULL) {
+	    mQRs = qrlh;
+	    (**qrlh).next = NULL;
+	  } else {
+	    (**qrlh).next = (void**) mQRs;
+	    mQRs = qrlh;
+	  }
+	}
+	(*mAllocCallback)(handle); //allow the application to continue
+      } else
+	TDB_SIG_ERR(err_OutOfMemory);
+      break;
+*/
+
     default:
       TDB_SIG_ERR(err_UnknownAllocationState);
       break;
@@ -3728,6 +3901,7 @@ dbg(DBG_USR1,"HEHEHEHE SEND TUPLE NOW\n");//fflush(stdout);
     return SUCCESS;
   }
 
+
   /* --------------------------------- Message Queuing ---------------------------------*/
   /** Copy the specified bytes into the message queue.  Messages are always data
       (tuple) messages.  Messages of more than kMSG_LEN
@@ -3746,8 +3920,10 @@ dbg(DBG_USR1,"HEHEHEHE SEND TUPLE NOW\n");//fflush(stdout);
 	{
 		QueryResultPtr newQrMsg;
 		int i;
+		int maxQR = mQRcount;
+		uint8_t* buffer = (uint8_t*)malloc((maxQR+1)*AGG_DATA_LEN);
+		QueryResultListPtr tempQ = mQRs;
 		SET_SENDING_MESSAGE();
-dbg(DBG_USR1, "HEHEHEHE in RADIOQUEUE.ENQUEUE kMSG_LEN %d TOSH_DATA_LENGTH %d QueryResult %d\n",kMSG_LEN,TOSH_DATA_LENGTH,sizeof(QueryResult));
 
 		newQrMsg = call Network.getDataPayLoad(&mMsg);
 		*newQrMsg = *qrMsg;
@@ -3759,22 +3935,33 @@ dbg(DBG_USR1, "HEHEHEHE in RADIOQUEUE.ENQUEUE kMSG_LEN %d TOSH_DATA_LENGTH %d Qu
 		  mMustTimestamp = TS_QUERY_RESULT_MESSAGE;
 		}
 
-dbg(DBG_USR1, "HEHEHE RADIOQUEUE.ENQUEUE DATA ");
-for (i=0;i<AGG_DATA_LEN;i++) {
-	printf("%d ",newQrMsg->d.data[i]);
-}
-printf("\n");
+		dbg(DBG_USR1, "HEHEHE RADIOQUEUE.ENQUEUE HASH ALL DATA ");
+		maxQR = (maxQR+1)*AGG_DATA_LEN;
+		memcpy(buffer,newQrMsg->d.data,AGG_DATA_LEN);
+		for (i=AGG_DATA_LEN;i<maxQR;i+=AGG_DATA_LEN) {
+			memcpy(buffer+i,tempQ->qr.d.data,AGG_DATA_LEN);
+			tempQ = tempQ->next;
+		}
+
+		// clean-up current query results
+		clearQueryResultList();
+
 		//hash data
 		call SHA1.reset(sha1Ctx);
-		call SHA1.update(sha1Ctx, newQrMsg->d.data, AGG_DATA_LEN);
+		call SHA1.update(sha1Ctx, buffer, maxQR);
 		call SHA1.digest(sha1Ctx, newQrMsg->dHash);
-dbg(DBG_USR1, "HEHEHE HASH SENDING ");
-for (i=0;i<SHA1HashSize;i++) {
-	printf("%02X ",newQrMsg->dHash[i]);
-}
-printf("\n");
-dbg(DBG_USR1, "HEHEHEHE in RADIOQUEUE.ENQUEUE BEFORE NETWORK SENDDATAMSG kMSG_LEN %d\n",kMSG_LEN);
-dbg(DBG_USR1, "HEHEHEHE in RADIOQUEUE.ENQUEUE qid %d epoch %d result_idx %d qrType %d\n",newQrMsg->qid, newQrMsg->epoch, newQrMsg->result_idx, newQrMsg->qrType);
+
+		dbg(DBG_USR1, "HEHEHE HASH SENDING ");
+		for (i=0;i<SHA1HashSize;i++) {
+			printf("%02X ",newQrMsg->dHash[i]);
+		}
+		printf("\n");
+
+		if (TOS_LOCAL_ADDRESS==0) {
+			dbg(DBG_USR1, "HEHEHE in RADIOQUEUE.ENQUEUE qid %d epoch %d result_idx %d qrType %d\n",
+				newQrMsg->qid, newQrMsg->epoch, newQrMsg->result_idx, newQrMsg->qrType);
+			dumpResultInQueryResult(newQrMsg,0);
+		}
 
 		if (call Network.sendDataMessage(&mMsg) != err_NoError) {
 		  //call PowerMgmtEnable();
@@ -3793,8 +3980,9 @@ dbg(DBG_USR1, "HEHEHEHE in RADIOQUEUE.ENQUEUE qid %d epoch %d result_idx %d qrTy
 		  UNSET_SENDING_MESSAGE();
 		  mSendingResult=FALSE;
 		  return err_MSF_SendWaitingBusy;
-		} else 
+		} else {
 		  mSendFailed = 0;
+		}
 		
 	}
 	else {
