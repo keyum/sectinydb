@@ -1,0 +1,461 @@
+\documentclass[a4paper]{article}
+\usepackage{gensips,amsmath,epsfig}
+\usepackage{graphicx}
+
+% Example definitions.
+% --------------------
+\def\x{{\mathbf x}}
+\def\L{{\cal L}}
+
+% Title.
+% ------
+\title{CSCI 5471 - Report - COMBINING SIA AND SDAP \\
+A ROBUST PROTOCOL FOR SECURE DATA AGGREGATION IN WSN}
+
+%
+% Single address.
+% ---------------
+%\name{Author(s) Name(s)\thanks{Thanks to XYZ agency for funding.}}
+%\address{Author Affiliation(s)}
+%
+% For example:
+% ------------
+%\address{Department, School\\
+%   Address\\
+%   email addresses}
+%
+% If there are multiple departments then they should be marked as below.
+\name{Brian Kleinke, Matt Kokotovich, Thanh Ngo, Matt Soukup and  Yul-Duck Sung}
+\address{Department of Computer Science and Engineering\\
+University of Minnesota, Twin Cities \\
+\{klein399,kokot012,ngotr001,souku024,sungx069\}@umn.edu }
+\hyphenation{col-umns}
+
+\begin{document}
+
+%
+\maketitle
+
+%
+%\begin{abstract}
+
+%Need for an abstract?
+
+%\end{abstract}
+
+%
+\section{Introduction}
+\label{sec:intro}
+
+In today's world, wireless sensor networks (WSN) are becoming increasingly
+common with the rapid improvement in wireless data transmission networks and
+the miniaturization of components. They were originally developed and used by
+the military; today, they are used in many civilian and industry applications,
+as well. Due to technological advances characterized by Moore's law, we now
+have small, incredibly powerful monitoring devices, which use a wireless
+network to transmit data. We are motivated by both this advance in technology
+an increase in the power of network monitor tools to improve on existing WSN
+secure data aggregation protocols. We believe that this field still contains
+areas for improvement. We became interested in combining protocols after
+reading Wireless Sensor Network Security: A Survey[8] and Secure Data
+Aggregation in Wireless Sensor[9] from which one can gain a good overview of
+the current protocols and their advantages and limitations to various
+attacks. Of particular interest are false data injections that can occur when
+only a single node is compromised. This is the attack we are particularly
+interested in defending against. Other attacks include denial of service,
+Sybil attacks, selective forwarding, replay, stealthy, and physical attacks
+\cite{Alzaid08}.
+
+The report is organized in the following manner. Section \ref{sec:background}
+gives some background about basic techniques in the field. Section 
+\ref{sec:relatedwork} describes related works, which act as the basis
+for our proposed protocol. Section \ref{sec:protocol} gives
+the motivation and description of the proposed protocol. In section
+\ref{sec:evaluation}, we talk about our intended methodology
+for evaluation. We conclude the report and give information
+about members' contribution in section \ref{sec:summary}.
+
+\section{Related Work}
+\label{sec:relatedwork}
+
+To provide ourselves with sufficient background in WSN research, we performed
+a comprehensive survey of the field. We looked at many different protocols and
+theories on WSN secure aggregation. This section will give an overview of what
+we studied.
+
+\subsection{Security Goals}
+
+During WSN aggregation, there are several security goals we want to try to
+meet. (see section 2.1 of survey paper)
+
+\subsection{Types of Attacks}
+
+Due to the nature of node deployment, the inexpensive cost of nodes, and many
+other factors, WSNs are vulnerable to many types of attacks. We will briefly
+overview each type of attack, and how it pertains to secure aggregation.\\
+
+{\bf Denial of Service Attack (DoS)} \\
+WSNs face the same vulnerability to DoS attacks that other wireless
+networks face. An adversary can broadcast radio signals that interfere with
+the frequencies used by the nodes, jamming the communications. In the context
+of aggregation, if a node cannot communicate with its parents it will not be
+able to pass on aggregated data.
+
+{\bf Node Compromise} \\
+Due to the low cost of each node, not much physical security is built into
+them. This, along with the tendacy to deploy nodes in hostile territories,
+leads to a high risk for node compromise. An adversary can capture a node,
+dissect it and gain information such as its keys. In secure aggregation,
+knowing an adversary can have access to any node and its keys makes ensuring
+correct results considerably more difficult.
+
+{\bf Sybil Attack} \\
+A sybil attack is when an attacker can present itself as multiple identities
+in the network. This can affect aggregation in multiple ways. The most
+straightforward way would be to report multiple readings. Other methods
+include fooling witness schemes into thinking enough witnesses have vouched
+for a particular node, and generating enough votes to falsely elect a
+compromised aggregator.
+
+{\bf Selective Forwarding Attack} \\
+Related to node compromise, a node under the control of an attacker can choose
+which packets it wants to forward, and which it wants to simply ignore. In
+certain aggregation schemes, such an attacker could forward enough packets to
+look active, but still affect the aggregation results.
+
+{\bf Replay Attack} \\
+Without even having control of a node, an attacker can record traffic from the
+network and rebroadcast it later, without necessarily understanding its
+contents. This attack, although not particularily sophisticated, can cause
+confusion and affect the manner in which aggregation results are collected.
+
+{\bf Stealthy Attack} \\
+The most dangerous type of attack, in a stealthy attack the attacker's goal is
+not to simply disrupt the network, but to cause the base station to accept
+false aggregation results. This can be accomplished by using one or more of
+the above methods of attack, and results in the base station trusting and
+accepting aggregation results that are not valid.
+
+\subsection{SDA - Secure Data Aggregation}
+
+Hu \& Evans propose the first secure data aggregation protocol in
+\cite{SDA}. The security goals of SDA are to prevent intruders from being able
+to inject forged readings, and prevent a single compromised node from being
+able to report false aggregation results. These goals are achieved by using
+delayed aggregation and authentication. Rather than having each parent
+aggregate their children's results, the data and a MAC of the data are
+forwarded up one more level and then aggregated. This way the grandparent can
+check to make sure that the data hasn't been changed. During the verification
+stage, the base station uses $\mu$Tesla to broadcast the temporary keys used
+by each node so that their neighbors can authenticate messages previously
+transmitted.
+
+One negative of this protocol is that if two successive nodes (i.e. parent and
+child) are corrupted then the protocol is broken. Also, once a grandfather
+node detects node corruption it cannot tell which node, the child or the
+grandchild, is corrupted. It also requires a fair amount of transmission, to
+broadcast the temporary keys each round.
+
+\subsection{ESA - Efficient secure aggregation in sensor networks}
+Jadia \& Mathuria improve upon SDA in \cite{ESA}. Rather than use $\mu$Tesla
+to have the base station broadcast the temporary keys used by each node, ESA
+uses pairwise keys to encrypt data between nodes. Parent and child use one-hop
+pairwise keys and grandparent and grandchild use two-hop pairwise keys. This
+reduces communication from the base station and reduces storage because each
+node doesn't need to hold onto data until they receive the temporary
+keys. However, the protocol still breaks down if two successive nodes are
+compromised.
+
+\subsection{WDA - A witness-based approach for data fusion assurace in wireless sensor networks}
+
+\subsection{SecureDAV - A secure data aggregation and verification protocol for sensor networks}
+
+\subsection{SRDA - Secure reference-based data aggregation protocol for wireless sensor networks}
+
+\subsection{CDA - Concealed data aggregation for reverse multicast traffic in sensor networks}
+
+\subsection{EDA - Efficient Aggregation of Encrypted Data in Wireless Sensor Networks}
+
+\subsection{SIA - Secure information aggregation in sensor networks}
+
+Przydatek et al. in \cite{SIA} proposed a new framework for secure information
+aggregation in sensor networks, named SIA. This framework uses a single
+aggregator to locally collect and aggregate data. It then sends it to a home
+server, which can prove with high probability that an accepted result is close
+to the actual measurement. In SIA, the home server and aggregator each have a
+master key, which they use to derive shared keys with each of the sensor
+nodes. This allows for authenticated communication and, if necessary,
+encryption. The home server and base station are assumed to have the ability
+to broadcast authentic messages (such as queries) into the network. This can
+be achieved using the $\mu$TESLA broadcast authentication protocol.
+
+The security goal of SIA is to prevent {\em stealthy attacks}, where attackers
+want to make the user accept false results, significantly different from the
+actual measured results, without the user knowing. This is accomplished
+through their proposed approach of {\em aggregate-commit-prove}. This is a
+three phase process which allows local aggregation (saving expensive network
+transmissions) and allows the home server to detect if the aggregator or a
+sensor node is cheating.
+
+The aggregator first collects data from sensors and computes the aggregation
+result. Secondly, it commits to the data by constructing a Merkle hash tree
+from the data. In such a tree, each node is computed as the hash of the
+concatenation of its two child nodes. The root node is the {\em commitment} of
+the collected data because, once it is computed, the values of the data cannot
+be changed. Finally, the aggregator and home server engage in an interactive
+proof phase. In this phase, the home server checks if the committed data is an
+accurate respresentation of the actual sensor data, exposing any cheating
+aggregators. This allows the home server to know with high probability whether
+it should accept the aggregated results.
+
+\subsection{SDAP - A secure hop-by-hop data aggregation protocol for sensor networks}
+
+In \cite{SDAP}, Yang et al. outline a secure data aggregation protocol called
+SDAP using the ideas of divide-and-conquer and commit-and-attest. In SDAP, all
+sensor nodes contribute readings to the aggregation and some also do
+aggregating. This is in contrast to SIA, where only the leaf nodes collect
+environmental data. Privacy is afforded by symmetric keys shared between
+neighbors, which encrypt and decrypt data on a hop-by-hop basis. Commitments
+are achieved through MACs, using a key shared with the base station. In this
+way, SDAP is similar to SIA and its Merkle hash trees. All sensor nodes
+contribute readings to the aggregation and some also do
+aggregating. Divide-and-conquer helps cycle aggregators, which helps
+distribute both trust and power consumption more uniformly throughout the
+network.
+
+In a WSN tree structure, nodes closer to the root require more trust since
+they aggregate the readings of a larger number of sensor nodes. In reality,
+all of the sensor nodes will be the same, regardless of their distance from
+the root. With this in mind, SDAP uses a divide-and-conquer approach to
+separate the WSN network into multiple {\em logical subgroups}, which has the
+effect of spreading trust more uniformly throughout the WSN. The groups are
+formed dynamically while aggregation is taking place. If the current node
+meets a specific criterion relating to the total number of readings it is
+aggregating, that node becomes a {\em leader} node. The leader node represents
+the root of the logical subgroup. The data aggregated by the leader is marked
+as finished and is forwarded by subsequent nodes without aggregating further
+on its path to the base station.
+
+After the base station receives the results from each of the logical
+subgroups, it can detect suspicious groups using a probabilistic method
+(Grubbs' Test) \cite{Grubb} that detects outliers. Once a suspicious group has
+been identified, that group can be targeted for verification. In the
+verification phase, the leader of the suspicious group recursively forms a
+path down to one of its leaves. Each member of the path and {em off path
+  nodes} forwards its data back to the base station, encrypting with a key
+shared with the base station. The base station can then recalculate the
+commitment and check its integrity.
+
+The downsides of SDAP are its hop-by-hop encryption, large amounts of
+data transmission, and unbalanced logical subgroups (subgroups
+depend on number of nodes and become uniform in size, but this does
+not have guarantees on the balance of their trees).
+
+
+
+\section{Background}
+\label{sec:background}
+\subsection{TESLA and $\mu$TESLA}
+
+TESLA is an authenticated streaming broadcast protocol. It uses asymmetric
+encryption, not suitable for sensor networks that have very limited
+power. Instead, $\mu$TESLA is often used for authenticated broadcasting in
+WSN. $\mu$TESLA is the "micro" version of TESLA. It uses delayed key
+disclosure and one-way function key chains. These techniques allows WSN
+network to achive asymmetric mechanism through a delayed disclosure of
+symmetric keys. Because receiver does not know the key when receiving the data
+and MAC (the key is only known by the base server), it is asymmetric
+mechanism. Keys used by MACs use normal symmetric encryption.
+
+
+\subsection{TAG - A tiny aggregation service for ad-hoc sensor networks}
+
+TAG describes basic concepts involved in the process of initiating aggregation
+in sensor networks. It does not worry about security issues. It abstracts the
+low level details of sensor networks and provides a high level interface in
+the form of a SQL query language for extracting information from a sensor
+network. This SQL style query language by TAG gives power and time efficient
+distribution of queries. Queries in TAG use only one table called {\em
+  sensors}.
+
+TAG uses a routing tree. It is not concerned with the details of setting up
+this tree or ad-hoc routing in general. The ad-hoc network must fulfill the
+requirements that each node has a route to the root and each node should not
+receive duplicate messages.
+
+The algorithm provided by TAG has two phases. First is the query distribution
+phase. Distribution means queries are pushed down to the network. Second is
+the collection phase. In this phase, only a single aggregate value will be
+produced per epoch, or time period, for which information is repeatedly
+collected.
+
+This is an example of a query in TAG:
+
+\begin{verbatim}
+	SELECT AVG(volume), room FROM sensors
+	WHERE floor = 6
+	GROUP BY room
+	HAVING AVG(volume) > threshold
+	EPOCH DURATION 30s
+\end{verbatim}
+
+EPOCH DURATION is reporting interval. If it is 30s, sensors report their
+reading in every thirty seconds. It works with the current TinyOS event driven
+model. Authors say that the EPOCH DURATION clause saves substantial power
+because nodes can sleep while knowing that their children will not be
+transmittingd data.
+
+\subsection{TinyOS/TinySIM}
+Developed by the University of California, Berkley, TinyOS is the most popular
+wireless sensor network operating system \cite{TinyOS}. Over 5000 research
+groups use TinyOS for their research in WSN. TinyOS also forms the largest
+sensor network community.
+
+Because TinyOS is open source, we can analyze all of the implementations of
+network protocols, MAC protocols, sensor interface, and other security
+protocols.  TinyOS supports secure protocols for sensor networks (SPINS) which
+provide $\mu$TESLA. TinyOS also supports a link-layer security module named
+TinySec \cite{Karlof04}.  Link-layer encryption takes place in the lowest
+protocol layers (layers 1 and 2 in the OSI model). It is not feasible over the
+internet but is currently used by a number of organizations such as the
+military.
+
+TinyOS has event driven and state change methods. Each TinyOS application has
+several independent modules, and an application is formed by connecting these
+modules together.
+
+TinySIM is a simulator for TinyOS. We can inject network packets that we want
+to simulate for a WSN using TinySIM. TinyViz is a visualization tool for
+TinySIM.
+
+\subsection{Secure hierarchical in-network aggregation in sensor networks}
+
+Chan et al. in \cite{Chan06} proposed an extended version of the SIA paper
+above which uses the {\em aggregate-commit-prove} framework in a hierarchical
+network. After aggregation, the base station checks the results by sending
+verification data down the tree to every node to verify that every node's data
+is actually counted. Each node on the path and the {\em off-path vertices'}
+data will be sent to the base station.  In order to save communication cost of
+verification, while aggregating data, some data need to be {\em
+  delayed-aggregated} so that the logical aggregation tree is balanced.  The
+idea is that some aggregators may aggregate the data of only some of its
+subtrees and forward data from other subtrees to it parent node. Forwarded
+data will be aggregated at higher level node so that it is logically a child
+of this higher level node. The resulting logical tree will be a more balanced
+tree.
+
+\section{Proposed protocol}
+\label{sec:protocol}
+
+\subsection{Motivation}
+
+\cite{SIA} and \cite{Chan06} provide an efficient framework for secure data
+aggregation in WSN for protecting against false data injection. If a
+compromised node is higher in the aggregation tree, i.e., closer to the root,
+it will have more impact on the final result and may deviate the result on a
+large scale.  In that case, the results are usually rejected even if a large
+amount of nodes in the WSN are uncorrupted nodes. \cite{SDAP} addressed this
+problem under their SDAP framework using a divide-and-conquer approach by
+forming subgroups in the WSN and passing on aggregated data of group leaders
+to the base station. This, in some sense, is similar to the
+delayed-aggreagation approach in \cite{Chan06} for efficient verification of
+aggregated results. The difference is data from group leaders would not be
+aggregated at higher levels while in \cite{Chan06} data is passed on until a
+balanced tree can be formed.
+
+The two methods are compatible to each other and can be combined to get the
+best of them. Inspired by this, we will employ the divide-and-conquer approach
+within the SIA framework to make it more robust to attacks, especially when
+corrupted nodes are at high level in the aggregation tree. At each aggregation
+step in SIA framework, both the probability function in \cite{Chan06} and the
+criteria to form a balanced tree in \cite{SDAP} will be used together to form
+logical subgroups in the forms of balanced trees. The next section will give a
+detailed explanation of our proposed protocol.
+
+\subsection{Protocol description}
+
+The proposed protocol is based on \cite{Chan06} and methods mentioned
+in section \ref{sec:background}. Most of the steps in the proposed protocol
+were worked out, but some of them still need more analyzing and researching.
+
+First, TAG \cite{tag} is used to construct the aggregation tree in the WSN
+from sensor nodes to base station. After this step, all nodes will know which
+node to send their data to for aggregating as well as verifying the
+results. TAG is considered to be a standard method in all protocols that we
+have studied. In this step, we also use it unmodified but we may also look
+into customizing it to create a more balanced aggregation tree to reduce the
+cost of achieving balance in the the aggregation step.
+
+Second, for query dissemination, we use $\mu$TESLA \cite{SPINS} for
+authenticated broadcasting from the base station to every node in the
+network. Like TAG, $\mu$TESLA is also a widely used method for this task in
+many secure protocols for WSN.
+
+Third, in the aggregation step, in our protocol, which is based on SIA, every
+node will commit their values to parent node using a Merkel hash tree
+\cite{Merkel} as in \cite{SIA}. The new feature that we propose is employed in
+this step.  Subgroups of balanced trees are dynamically created while
+aggregating data based on {\it (i)} a probability function, which depends on
+the count of sensing child nodes at the current node, and {\it (ii)} the depth
+of its subtrees. The node will be a group leader, and its data will be passed
+on to the base station without being aggregated if the output of the
+probability function is larger than a threshold and a balanced tree can be
+formed from its subtrees. In this step, we do not use a cryptographic function
+to encrypt aggregated data. However, privacy can be protected by using a
+homomorphism primitives such as \cite{Castel} or similar methods. We may
+analyze the increase in communication as well as computation cost when using
+encryption in this step if time permits.
+
+In the last step, final results will be verified using either the
+prove-procedures in \cite{SIA} or the outlier detection and attest approach in
+\cite{SDAP}. We still need to do more research to consolidate our knowledge of
+the methods with detailed procedures and their costs to come up with clear a
+description of this step to do experiments and put it in our final report.
+
+\section{Evaluation}
+\label{sec:evaluation}
+
+For evaluation, we will implement the protocol and simulate attacks in
+TinySim. We will measure the the number of rejections under attacks with
+different thresholds for approximation. We will also analyze the cost of
+communication of either choices for the last step our our protocol described
+above. In addition, we hope that we can give some theoretical estimates on how
+the protocol improved in terms of reducing rejections when the network is
+attacked at high level nodes.
+
+\section{Summary and status}
+\label{sec:summary}
+
+We proposed a combination of SIA and SDAP for robust secure data aggregation
+in WSN. Compared to our milestone in previous report, we are a little late as
+we haven't decided on the last past of the protocol yet, but other parts have
+been worked out especially the aggregation step where SIA and SDAP are
+combined. WSN is new to all group members so more time is spent on getting the
+background than it was planed.
+
+Our work distribution is as followed:
+
+Brian Kleinke: 7 Hours. Read and analyzed papers, group discussions, wrote
+introduction interim report, edited interim report.
+
+Matt Kokotovich: ~9 hours. Read, compare, and contrast papers, group meeting
+and discussions, wrote SIA summary in interim report, edited tex formatting.
+
+Matt Soukup: ~16 hours. Reading and analyzing papers, meeting and discussing
+with group, writing SDAP summary, and proofreading this interim report.
+
+Thanh Ngo: ~18 hours. Reading papers, discussing with group to find ideas,
+writing proposed protocol section and editing this report.
+
+Yulduck Sung: ~14 hours. Read papers, discussed with group to find ideas,
+wrote summaries of TinyOs, TinySIM, TinySec, $\mu$TESLA and TAG.
+
+
+% References should be produced using the bibtex program from suitable
+% BiBTeX files (here: strings, refs, manuals). The IEEEbib.bst bibliography
+% style file from IEEE produces unsorted bibliography list.
+% -------------------------------------------------------------------------
+\bibliographystyle{IEEEbib}
+\bibliography{report}
+
+\end{document}
