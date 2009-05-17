@@ -339,11 +339,12 @@ implementation {
    RETURNS: err_NoError if no error
             err_UnknownError if transmission fails.
 */
-     command TinyDBError Network.sendDataMessage(TOS_MsgPtr msg) {
+    command TinyDBError Network.sendDataMessage(TOS_MsgPtr msg) {
       uint8_t rootId = 0;
       bool amRoot;
 
-dbg(DBG_USR1, "HEHEHEHE in NETWORK.SENDATAMSG kMSG_LEN %d\n",kMSG_LEN);
+      //dbg(DBG_USR1, "HEHEHEHE in NETWORK.SENDATAMSG kMSG_LEN %d\n",kMSG_LEN);
+
       amRoot = checkRoot(msg, &rootId);
       return call Network.sendDataMessageTo(msg, mRelatives[mParentIx[rootId]]);
     }
@@ -363,7 +364,6 @@ dbg(DBG_USR1, "HEHEHEHE in NETWORK.SENDATAMSG kMSG_LEN %d\n",kMSG_LEN);
 
 
       //send message bcast, filter at app level
-dbg(DBG_USR1, "HEHEHE in SENDDATAMSG.SEND BEFORE mRadio kMSG_LEN %d\n",kMSG_LEN);
 
       // amRoot == a base station (connected directly to the pc via the uart)
       if (!mRadio) {
@@ -373,7 +373,6 @@ dbg(DBG_USR1, "HEHEHE in SENDDATAMSG.SEND BEFORE mRadio kMSG_LEN %d\n",kMSG_LEN)
 	
 	if (amRoot) {
 	  mIdx--; //no one else will see this message -- reset the sequence counter
-dbg(DBG_USR1, "HEHEHE AMROOT SENDDATAMSG.SEND kMSG_LEN %d\n",kMSG_LEN);
 	  if (call SendDataMsg.send(TOS_UART_ADDR, kMSG_LEN, msg) == SUCCESS) {
 	    return err_NoError;
 	  } else {
@@ -381,7 +380,6 @@ dbg(DBG_USR1, "HEHEHE AMROOT SENDDATAMSG.SEND kMSG_LEN %d\n",kMSG_LEN);
 	    return err_MessageSendFailed;
 	  }
 	} else {
-dbg(DBG_USR1, "HEHEHE SENDDATAMSG.SEND kMSG_LEN %d\n",kMSG_LEN);
 	  mRetryCnt = DATA_RETRIES;
 	  if (call SendDataMsg.send(TOS_BCAST_ADDR, kMSG_LEN, msg) == SUCCESS) {
 	    return err_NoError;

@@ -32,7 +32,7 @@
 
 includes sha1;
 
-#define SHA1HashSize 20
+#define SHA1HashSize 8
 
 interface SHA1 {
 

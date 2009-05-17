@@ -52,6 +52,9 @@ implementation {
 		dest->csum += merge->csum;
 		dest->count += merge->count;
 		
+		if (TOS_LOCAL_ADDRESS==0)
+			dbg(DBG_USR1, "HEHEHE sum %d csum %d count %d\n\n",dest->sum, dest->csum, dest->count);
+
 		return SUCCESS;
 	}
 	

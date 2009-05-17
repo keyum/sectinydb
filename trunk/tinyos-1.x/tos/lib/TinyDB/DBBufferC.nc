@@ -438,8 +438,7 @@ implementation {
     case kRADIO_BUFFER: {
       if (mState != kIDLE) return err_ResultBufferBusy;
 
-dbg(DBG_USR1,"HEHEHEHE ENQUEUE RADIO BUFFER\n");//fflush(stdout);
-dbg(DBG_USR1, "HEHEHEHEHEHHEHEHEHEH in DBBUFFER.ENQUEUE qid %d epoch %d result_idx %d qrType %d\n",r->qid, r->epoch, r->result_idx, r->qrType);
+      //dbg(DBG_USR1, "HEHEHE in DBBUFFER.ENQUEUE qid %d epoch %d result_idx %d qrType %d\n",r->qid, r->epoch, r->result_idx, r->qrType);
 
       mCurResult = r;
       mCurQuery = pq;
@@ -455,7 +454,6 @@ dbg(DBG_USR1, "HEHEHEHEHEHHEHEHEHEH in DBBUFFER.ENQUEUE qid %d epoch %d result_i
     case kQUERY_BUF:
       return err_UnsupportedBuffer;
     default:
-dbg(DBG_USR1,"HEHEHEHE ENQUEUE DEFAULT\n");//fflush(stdout);
       err = getBuf(bufferId, &buf);
       if (err != err_NoError) return err;
       break;
@@ -468,7 +466,6 @@ dbg(DBG_USR1,"HEHEHEHE ENQUEUE DEFAULT\n");//fflush(stdout);
 	char *cmdStr = (char *)&buf->data;
 	CommandDescPtr cmd = call CommandUse.getCommandById((uint8_t)(cmdStr[0]));
 
-dbg(DBG_USR1,"HEHEHEHE ENQUEUE TYPE COMMAND\n");//fflush(stdout);
 
 	if (cmd!=NULL) {
 	  ParamVals params;
@@ -500,7 +497,6 @@ dbg(DBG_USR1,"HEHEHEHE ENQUEUE TYPE COMMAND\n");//fflush(stdout);
     break;
       
     case kEEPROM:
-dbg(DBG_USR1,"HEHEHEHE ENQUEUE TYPE EEPROM\n");//fflush(stdout);
       if (mState != kIDLE) {
 	return err_ResultBufferBusy;
       }
@@ -542,7 +538,6 @@ dbg(DBG_USR1,"HEHEHEHE ENQUEUE TYPE EEPROM\n");//fflush(stdout);
       }
       break;
     case kRAM:
-dbg(DBG_USR1,"HEHEHEHE ENQUEUE TYPE RAM\n");//fflush(stdout);
       if (mState != kIDLE) {
 	return err_ResultBufferBusy;
       }
@@ -609,7 +604,7 @@ dbg(DBG_USR1,"HEHEHEHE ENQUEUE TYPE RAM\n");//fflush(stdout);
     bool pending = FALSE;
     ResultTuple rtup;
     
-dbg(DBG_USR1, "HEHEHEHEHEHHEHEHEHEH in DBBUFFER.continueENQUEUE qid %d epoch %d result_idx %d qrType %d\n",r->qid, r->epoch, r->result_idx, r->qrType);
+    //dbg(DBG_USR1, "HEHEHE in DBBUFFER.continueENQUEUE qid %d epoch %d result_idx %d qrType %d\n",r->qid, r->epoch, r->result_idx, r->qrType);
 
     mState = kRADIO_ENQUEUE;
 
@@ -617,22 +612,17 @@ dbg(DBG_USR1, "HEHEHEHEHEHHEHEHEHEH in DBBUFFER.continueENQUEUE qid %d epoch %d 
       mState = kIDLE;
       return err_NoError;
     }
-dbg(DBG_USR1,"HEHEHE BEFORE  GET RESULT TUPLE\n");
     rtup = call QueryResultIntf.getResultTuple(r, mCurResultIdx++, pq);
     if (rtup.error != err_NoError) {
       mState = kIDLE;
       return rtup.error;
     }
-dbg(DBG_USR1,"HEHEHE BEFORE  FROM RESULT TUPLE\n");
       
     err = call QueryResultIntf.fromResultTuple(rtup, &newqr, pq);
     if (err != err_NoError) {
       mState = kIDLE;
       return err;
     }
-    
-dbg(DBG_USR1, "HEHEHEHEHEHHEHEHEHEH in DBBUFFER.continueENQUEUE NEWQR qid %d epoch %d result_idx %d qrType %d\n",newqr.qid, newqr.epoch, newqr.result_idx, newqr.qrType);
-dbg(DBG_USR1,"HEHEHE BEFORE  RADIOQUEUE ENQUEUE\n");
     
     err = call RadioQueue.enqueue((QueryResultPtr)&newqr, &pending);
     if (err != err_NoError)
