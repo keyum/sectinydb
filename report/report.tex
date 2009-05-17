@@ -10,7 +10,7 @@
 % Title.
 % ------
 \title{CSCI 5471 - Report\\
-IMPLEMENTING SECURITY PRIMITIVES IN TINYDB/TINYOS AND \\
+IMPLEMENTING SIA PROTOCOL IN TINYDB/TINYOS AND \\
 SURVEY ON PROTOCOLS FOR SECURE DATA AGGREGATION IN WSN}
 
 %
@@ -81,7 +81,121 @@ about members' contribution in section \ref{sec:summary}.
 
 \subsection{Why TinyDB/TinyOS}
 
-We
+We briefly looked at several available testbeds for wireless sensor network
+ such as TinyOS \cite{TinyOS}, NS-2 \cite{NS2}, SensorSim 
+\cite{SensorSim} and other simulators mentioned in \cite{Yu}. NS-2 is a good
+simulation for testing several network protocols. It also has some plugins for
+WSN but it is not specifically designed for sensor network. SensorSim is
+specifically designed for WSN and it has a variety of  battery models to analyze 
+the performance but unfortunately, it is now longer available for downloading.
+We finally picked TinyOS since it is a real operating system that runs on
+many types of sensors. It has TOSSIM, a simulator, with several plugins
+for visualizing the network topology, power profiling and debugging, etc.
+Moreover, with our main purpose of implementing secure data aggregation
+in WSN, TinyDB, a querying system shipped with TinyOS, is a great start
+for two reasons: {\it (i)} it has a complete in-network data aggregation framework
+with built-in network topology construction based on TAG \cite{TAG}; {\it (ii)} it
+has been used in real life applications but lack of a security mechanism so 
+it would be useful to provide one for it.
+
+\subsection{Implementation}
+
+\subsubsection{Goals and Results}
+
+Our goal is integrating and analyzing the protocol proposed in \cite{Chan06}
+inside TinyDB. In a nutshell, the protocol consists of two main phases:
+aggregation-commit phase and result-checking phase. In the first one,
+data is aggregated through an aggregation tree with their commitment
+values using a cryptography hash function. In other words, a Merkel hash
+tree with aggregated results is formed for aggregation, which lets each mote
+have commitment to their values and cannot deny later. In the second phase,
+off-path values are disseminated to every mote in the network to have them
+check if their values contribute to the final result.
+
+At the time of this report, we are able to implement the first phase in TinyDB,
+however, we find it difficult to implement the second phase. We will talk about
+our implementation and analysis on power usage first and give comments 
+on the difficulties later.
+
+\subsubsection{Aggregation-Commit in TinyDB}
+
+For instruction on setting up the system and compiling the source code, please see
+appendix (section \ref{sec:appendix}). 
+
+We have implemented a new aggregation
+operation for TinyDB named SecureSum which aggregate the reading values, its
+complement and the count. This data structure and aggregation function are the
+implementation of label tuples mentioned in \cite{Chan06}. Users can choose to perform 
+this aggregator from the GUI of TinyDB. 
+
+For the commitment part in the tuple, we inject a new field for hashed value in
+the query result data structure, which increases the size of each message from 58 bytes to 
+78 bytes. We use SHA1 for hashing the data. The port of SHA1 using nesC is
+obtained from TinyECC \cite{TinyECC}.
+
+TinyDB deletes result tuples received from other nodes right after their data is
+aggregated. To construct a hash tree, the hashed value is computed from readings
+of current mote and readings received from other motes, so a list is added
+in each mote to temporary save any received data for computing the hash and
+for the result-checking phase.
+
+Based on the above implementation, a commitment tree has been constructed along
+with the aggregation tree. Since we haven't finished with the protocol yet, we are 
+interested in seeing how the aggregation-commit phase, which includes additional bytes
+for messages and additional CPU for hashing values, affects the total power usage
+of motes. We ran power profiling in TOSSIM to measure the power usage of a network
+of 20 motes using our SecureSum function (with commitment tree) and the original 
+Average function of TinyDB. Unfortunately, with more motes in the network, the simulation ran
+very slow in our computers. The experiments were run in 30 seconds simulation time,
+which takes several minutes real time, with one query issued at every 2 seconds, 
+and surprisingly, the power usages in both cases
+are roughly the same as depicted in figure \ref{fig:avg}. 
+
+CPU power usage is
+increased a little bit in case of SecureSum maybe due to computing the hash. However,
+with the significant increasing in message size, the radio power oddly does not change
+significantly. Our guess is there is other bigger overhead lower in the sensor network 
+stack than just the message size at TinyDB layer. Another possible reason is
+the power profiling feature in TOSSIM does not provide good approximation for power
+usage. If  this is the case, either better power simulators or real motes are needed to
+test the performance of protocols in WSN. Another odd thing from this simulation is that
+mote 0, which is the root, have the same power usage as other motes. We think that this 
+is because the frequent change of aggregation tree topology in TinyDB.
+
+\begin{figure}
+\centering
+  \begin{tabular}{cc}
+\includegraphics[width=3cm, height=5cm]{power_usage_avg_op}&\includegraphics[width=3cm,
+  height=5cm]{power_usage_with_sha1}\\
+    (A) & (B) \\
+  \end{tabular}
+\caption{Power profile for AVG (A) and SecureSum (B)} 
+\label{fig:avg}
+\end{figure}
+
+\subsubsection{Difficulties of SIA's result-checking phase in TinyDB}
+
+In TinyDB and in real life WSN applications, data cannot be always fully aggregated
+from all motes in the network. For instance, the count returned in SecureSum function 
+in all of our experiments hardly reach 20, which is the number of motes. Meanwhile,
+the result-checking phase of \cite{Chan06} is to ensure that all motes contribute
+to the final result. A compromised aggregated mote can just say it has not received
+messages from certain motes, or those messages comes late after the timeout to
+send results back to the root. 
+
+Another problem is that in TinyDB, the aggregation tree topology is changed 
+frequently and it is hard to keep track of previous state of the tree to issue
+off-path values for result-checking.
+
+\subsubsection{Comments}
+
+In general, the assumptions in SIA as well as other protocols for secure data aggregation
+in WSN at the moment are too ideal and cannot deal with rapid changing and uncertainties
+in WSN. In our opinion, it is more practical to look into cheap alternative for current
+security primitives such as hashing, MAC, en/decryption, etc., to efficiently secure
+the WSN given that attackers has limited power and time to make serious impact
+on this real time environment. 
+
 \section{Related Work}
 \label{sec:relatedwork}
 
@@ -456,6 +570,29 @@ writing proposed protocol section and editing this report.
 
 Yulduck Sung: ~14 hours. Read papers, discussed with group to find ideas,
 wrote summaries of TinyOs, TinySIM, TinySec, $\mu$TESLA and TAG.
+
+\section{Appendix - Installation and compiling}
+\label{sec:appendix}
+
+Our source code is made available at \\
+http://code.google.com/p/sectinydb/source/browse/.\\
+To compile, a running
+TinyOS system is required. The easiest way to obtain such system is downloading
+the Xubutos VMWare image at\\
+http://sing.stanford.edu/tinyos/dists/xubuntos-2.0-vm.tar.gz.
+This is a Xubuntu system with TinyOS installed and configured for TinyOS-2.x.
+
+TinyDB currently works with TinyOS-1.x, so everytime we open up a terminal
+to run or compile TinyOS, we need to type \textbf{tos1} to re-configure it to 
+TinyOS-1.1. The source code for TinyOS-1.1 is in /opt/tinyos-1.x. Our SVN
+repository resembles the tinyos-1.x folder structure but with only folders that
+has modified content due to the big size of the whole source code. One can check
+out the repository and replace corresponding folders with ours. To compile and run,
+one can follow the instruction given in section 9 in /opt/tinyos-1.x/doc/tinydb.pdf.
+Our SecureSum function is available in the aggregator dropdown list. To view
+the power profile, before running TinyDBApp, one needs to do "export DBG=usr1,power", 
+run TinyDBApp with option "-p" and run TinyViz to view the profile
+by typing "tinyviz" in a terminal. 
 
 
 % References should be produced using the bibtex program from suitable
