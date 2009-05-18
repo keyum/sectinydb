@@ -1,6 +1,7 @@
+TINYSEC=true
 COMPONENT=TinyDBApp
-SENSORBOARD=micasb
-PFLAGS=-I../../tos/lib/Attributes -I ../../tos/lib/Util -I../../tos/lib/Commands -I../../tos/lib/TinyDB -I../../tos/lib/MintRoute -I../../tos/lib/Queue -I../../tos/lib/FS -I../../tos/lib/TinyDB/Aggregates
-MSG_SIZE=78
-include ../Makerules
 
+PFLAGS=-I../../tos/lib/Attributes -I ../../tos/lib/Util -I../../tos/lib/Commands -I../../tos/lib/TinyDB -I../../tos/lib/MintRoute -I../../tos/lib/Queue -I../../tos/lib/FS -I../../tos/lib/TinyDB/Aggregates -I../../tos/lib/TinySec -I../../tos/platform/pc -DTINYSEC_KEY="0x07,0x8C,0xDE,0x63,0xD3,0xB7,0x76,0xC3,0x43,0x75,0xCF,0x9E,0xA5,0xF2,0x6D,0x05" -DTINYSEC_KEYSIZE=8
+MSG_SIZE=78
+
+include ../Makerules

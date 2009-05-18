@@ -38,8 +38,10 @@
  * @author Sam Madden
  */
 
-includes CompileDefines;
+//#define USE_SHA1
 
+includes CompileDefines;
+includes CryptoPrimitives;
 configuration TinyDBApp {
 }
 
