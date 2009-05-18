@@ -28,6 +28,10 @@
  * Intel Research Berkeley, 2150 Shattuck Avenue, Suite 1300, Berkeley, CA, 
  * 94704.  Attention:  Intel License Inquiry.
  */
+
+//#define SHA1
+//#define CBCMAC
+
 includes Attr;
 includes MemAlloc;
 includes TosTime;
@@ -179,7 +183,15 @@ module TupleRouterM {
 	interface StdControl as PoochHandler;
 	interface WDT;
 #endif
+
+#ifdef USE_SHA1
     interface SHA1;
+#endif
+#ifdef USE_CBCMAC
+    interface MAC;
+    interface BlockCipherMode;
+    interface BlockCipherInfo;
+#endif
 
     async command void setSimpleTimeInterval(uint16_t new_interval);
     async command uint16_t getSimpleTimeInterval();
@@ -204,7 +216,8 @@ module TupleRouterM {
 }
 
 implementation {
-  
+#ifdef USE_CBCMAC
+#endif
   #define TDB_SIG_ERR(errNo) call signalError((errNo), __LINE__)
 
   /* ----------------------------- Type definitions ------------------------------ */
@@ -452,8 +465,24 @@ implementation {
   uint16_t mNumMerges;
 #endif
 
+#ifdef USE_SHA1
   SHA1Context *sha1Ctx;
-
+#endif
+#ifdef USE_CBCMAC
+  uint8_t encryptionKey[TINYSEC_KEYSIZE];
+  CipherModeContext cipherModeContext;
+  MACContext macContext;
+  // buffer for posting mac opration for receive
+  struct computeMACBuffer {
+	  bool computeMACWaiting;
+	  bool computeMACInitWaiting;
+	  uint8_t position;
+	  uint8_t amount;
+	  bool finishMACWaiting;
+  } computeMACBuffer;
+//  uint8_t encryptionKey[TINYSEC_KEYSIZE];
+  uint8_t MACKey[TINYSEC_KEYSIZE];
+#endif
   /* ----------------- Functions to modify pending mask --------------------- */
  
   void SET_READING_QUERY() {(mPendingMask |= READING_BIT); (mQMsgMask = 0x0); }
@@ -520,7 +549,9 @@ implementation {
 
 
   /* ----------------------------- Prototypes for Internal Routines ------------------------------ */
-
+#ifdef CBCMAC
+  result_t computeMAC();
+#endif
   void continueQuery(Handle *memory);
   bool addQueryField(QueryMessagePtr qmsg);
   bool allocPendingQuery(MemoryCallback callback, Query *q);
@@ -540,6 +571,8 @@ implementation {
   void finishedOpeningWriteBuffer(ParsedQuery *pq);
   void finishedOpeningReadBuffer(ParsedQuery *pq, uint8_t bufferId);
   void continueFromBufferFetch(TinyDBError err);
+
+  //command initCBCMAC();
 
   result_t saveQueryResult(QueryResult* qr);
   void clearQueryResultList();
@@ -647,6 +680,11 @@ implementation {
 
   /** Intialize the tuple router */
   command result_t StdControl.init() {
+#ifdef USE_CBCMAC
+    uint8_t tmp = call BlockCipherInfo.getPreferredBlockSize();
+    uint8_t key_tmp[2*TINYSEC_KEYSIZE] = {TINYSEC_KEY};
+#endif
+
 #ifdef kLIFE_CMD
     ParamList params;
 #endif
@@ -723,11 +761,28 @@ implementation {
 #endif
 	mIsFirstStart = TRUE;
 
+#ifdef USE_SHA1
     sha1Ctx = (SHA1Context*) malloc(sizeof(SHA1Context));
+#endif
+#ifdef USE_CBCMAC
+    //call initCBCMAC();
+    memcpy(encryptionKey,key_tmp,TINYSEC_KEYSIZE);
+    memcpy(MACKey,key_tmp+TINYSEC_KEYSIZE,TINYSEC_KEYSIZE);
 
+    call BlockCipherMode.init(&cipherModeContext,TINYSEC_KEYSIZE,encryptionKey);
+    call MAC.init(&macContext,TINYSEC_KEYSIZE,MACKey);
+
+#endif
     return SUCCESS;
   }
+/*
+ #ifdef CBCMAC
+  command initCBCMAC()
+ {
 
+  }
+#endif
+*/
   command result_t StdControl.start() {
 
     mNumAttrs = 0;
@@ -862,7 +917,9 @@ implementation {
     }
 #endif
 
+#ifdef USE_SHA1
     free(sha1Ctx);
+#endif
 
     return SUCCESS;
   }
@@ -1943,10 +2000,23 @@ int i;
 	mNumMerges++;
 #endif
 
+#ifdef USE_SHA1
 	dbg(DBG_USR1, "HEHEHE HASH RECEIVED ");
 	for (i=0;i<SHA1HashSize;i++) {
 		printf("%02X ",qr.dHash[i]);
 	}
+#endif
+#ifdef USE_CBCMAC
+	dbg(DBG_USR1,"MAC: computed: %hx %hx %hx %hx %hx %hx %hx %hx\n",
+			qr.dCBCMAC[0],
+			qr.dCBCMAC[1],
+			qr.dCBCMAC[2],
+			qr.dCBCMAC[3],
+			qr.dCBCMAC[4],
+			qr.dCBCMAC[5],
+			qr.dCBCMAC[6],
+			qr.dCBCMAC[7]);
+#endif
 	printf("epoch %d", qr.epoch);
 	printf("\n");
 
@@ -3945,17 +4015,38 @@ event result_t AbsoluteTimer.fired() {
 
 		// clean-up current query results
 		clearQueryResultList();
-
+#ifdef USE_SHA1
 		//hash data
 		call SHA1.reset(sha1Ctx);
 		call SHA1.update(sha1Ctx, buffer, maxQR);
 		call SHA1.digest(sha1Ctx, newQrMsg->dHash);
-
 		dbg(DBG_USR1, "HEHEHE HASH SENDING ");
 		for (i=0;i<SHA1HashSize;i++) {
 			printf("%02X ",newQrMsg->dHash[i]);
 		}
 		printf("\n");
+#endif
+#ifdef USE_CBCMAC
+		printf("YULDUCK: CBCMAC! \n");
+		call MAC.MAC(&macContext,
+			  (uint8_t*) &(buffer),
+			  maxQR,
+			  newQrMsg->dCBCMAC,
+			  8);
+			  //TINYSEC_MAC_LENGTH+TINYSEC_ACK_LENGTH);
+		printf("YULDUCK: CBCMAC VALUE : %d\n",newQrMsg->dCBCMAC[0]);
+		/*
+		dbg(DBG_USR1,"MAC: computed: %hx %hx %hx %hx %hx %hx %hx %hx\n",
+			newQrMsg->dCBCMAC[0],
+			newQrMsg->dCBCMAC[1],
+			newQrMsg->dCBCMAC[2],
+			newQrMsg->dCBCMAC[3],
+			newQrMsg->dCBCMAC[4],
+			newQrMsg->dCBCMAC[5],
+			newQrMsg->dCBCMAC[6],
+			newQrMsg->dCBCMAC[7]);
+		*/
+#endif
 
 		if (TOS_LOCAL_ADDRESS==0) {
 			dbg(DBG_USR1, "HEHEHE in RADIOQUEUE.ENQUEUE qid %d epoch %d result_idx %d qrType %d\n",
@@ -3991,7 +4082,29 @@ event result_t AbsoluteTimer.fired() {
 	}
 	return err_NoError;
   }
-
+#ifdef CBCMAC
+/*
+  result_t computeMAC(uint8_t* data, int16_t txlength) {
+	  result_t result = call MAC.MAC(&macContext,
+			  (uint8_t*) &(ciphertext_send_ptr->addr),
+			  txlength,
+			  ciphertext_send_ptr->calc_mac,
+			  
+			  //TINYSEC_MAC_LENGTH+TINYSEC_ACK_LENGTH);
+	  // copy calculated mac to mac field. reason is because extra byte
+	  // was calculated and stored in ack_byte. ack_byte is
+	  // currently not used.
+	  memcpy(ciphertext_send_ptr->mac,ciphertext_send_ptr->calc_mac,
+			  TINYSEC_MAC_LENGTH);
+	  dbg(DBG_CRYPTO,"MAC: computed: %hx %hx %hx %hx\n",
+			  (ciphertext_send_ptr->mac)[0],
+			  (ciphertext_send_ptr->mac)[1],
+			  (ciphertext_send_ptr->mac)[2],
+			  (ciphertext_send_ptr->mac)[3]);
+	  return result;
+  }
+  */
+#endif
   /* --------------------------------- Error Handling  ---------------------------------*/
   #if defined(PLATFORM_PC) //itoa not on pc
   void itoa(int err, char *errNo, int radix) {
