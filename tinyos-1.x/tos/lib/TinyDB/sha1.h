@@ -43,7 +43,7 @@ enum
     shaStateError       /* called Input after Result */
 };
 #endif
-#define SHA1HashSize 8
+#define SHA1HashSize 20
 
 /*
  *  This structure will hold context information for the SHA-1
