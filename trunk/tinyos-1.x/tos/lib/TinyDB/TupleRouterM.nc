@@ -763,12 +763,13 @@ implementation {
 
 #ifdef USE_SHA1
     sha1Ctx = (SHA1Context*) malloc(sizeof(SHA1Context));
+    printf("USE SHA1!!!!!\n");
 #endif
 #ifdef USE_CBCMAC
     //call initCBCMAC();
+    printf("USE CBCMAC!!!!!\n");
     memcpy(encryptionKey,key_tmp,TINYSEC_KEYSIZE);
     memcpy(MACKey,key_tmp+TINYSEC_KEYSIZE,TINYSEC_KEYSIZE);
-
     call BlockCipherMode.init(&cipherModeContext,TINYSEC_KEYSIZE,encryptionKey);
     call MAC.init(&macContext,TINYSEC_KEYSIZE,MACKey);
 
@@ -4005,7 +4006,7 @@ event result_t AbsoluteTimer.fired() {
 		  mMustTimestamp = TS_QUERY_RESULT_MESSAGE;
 		}
 
-		dbg(DBG_USR1, "HEHEHE RADIOQUEUE.ENQUEUE HASH ALL DATA ");
+		dbg(DBG_USR1, "HEHEHE RADIOQUEUE.ENQUEUE HASH or CBCMAC ALL DATA \n");
 		maxQR = (maxQR+1)*AGG_DATA_LEN;
 		memcpy(buffer,newQrMsg->d.data,AGG_DATA_LEN);
 		for (i=AGG_DATA_LEN;i<maxQR;i+=AGG_DATA_LEN) {
@@ -4017,6 +4018,7 @@ event result_t AbsoluteTimer.fired() {
 		clearQueryResultList();
 #ifdef USE_SHA1
 		//hash data
+		dbg(DBG_USR1,"YULDUCK: SHA1! maxQR: %d AggDataLen: %d\n",maxQR, AGG_DATA_LEN); fflush(stdout);
 		call SHA1.reset(sha1Ctx);
 		call SHA1.update(sha1Ctx, buffer, maxQR);
 		call SHA1.digest(sha1Ctx, newQrMsg->dHash);
@@ -4025,6 +4027,32 @@ event result_t AbsoluteTimer.fired() {
 			printf("%02X ",newQrMsg->dHash[i]);
 		}
 		printf("\n");
+<<<<<<< .mine
+		dbg(DBG_USR1,"YULDUCK: SHA1 \n"); fflush(stdout);
+#endif
+#ifdef USE_CBCMAC
+		dbg(DBG_USR1,"YULDUCK: CBCMAC! maxQR: %d AggDataLen: %d\n",maxQR, AGG_DATA_LEN); fflush(stdout);
+		call MAC.MAC(&macContext,
+			  (uint8_t*) (buffer),
+			  maxQR,
+			  newQrMsg->dCBCMAC,
+			  8);
+			  //TINYSEC_MAC_LENGTH+TINYSEC_ACK_LENGTH);
+		dbg(DBG_USR1,"YULDUCK: CBCMAC \n"); fflush(stdout);
+		//printf("YULDUCK: CBCMAC VALUE : %d\n",(newQrMsg->dCBCMAC)[0]);
+		/*
+		dbg(DBG_USR1,"MAC: computed: %hx %hx %hx %hx %hx %hx %hx %hx\n",
+			newQrMsg->dCBCMAC[0],
+			newQrMsg->dCBCMAC[1],
+			newQrMsg->dCBCMAC[2],
+			newQrMsg->dCBCMAC[3],
+			newQrMsg->dCBCMAC[4],
+			newQrMsg->dCBCMAC[5],
+			newQrMsg->dCBCMAC[6],
+			newQrMsg->dCBCMAC[7]);
+		*/
+#endif
+=======
 #endif
 #ifdef USE_CBCMAC
 		printf("YULDUCK: CBCMAC! \n");
@@ -4047,6 +4075,7 @@ event result_t AbsoluteTimer.fired() {
 			newQrMsg->dCBCMAC[7]);
 		*/
 #endif
+>>>>>>> .r13
 
 		if (TOS_LOCAL_ADDRESS==0) {
 			dbg(DBG_USR1, "HEHEHE in RADIOQUEUE.ENQUEUE qid %d epoch %d result_idx %d qrType %d\n",

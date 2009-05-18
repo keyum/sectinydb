@@ -43,7 +43,14 @@
  * @author and Joe Hellerstein
  */
 
+#ifdef USE_SHA1
 #include "sha1.h"
+#endif
+#ifdef USE_CBCMAC
+enum{
+    CBCMAC_BLOCK_SIZE = 8
+};
+#endif
 
 uint8_t combine_tdberr(uint8_t r1, uint8_t r2);
 typedef uint8_t TinyDBError 
@@ -189,7 +196,12 @@ typedef struct QueryResult {
     // to internal data structures.
     AggResultRef buf[kMAX_RESULTS]; //pointers for results -- qrType == kIS_AGG
   } d;
+#ifdef USE_SHA1
   uint8_t dHash[SHA1HashSize];
+#endif
+#ifdef USE_CBCMAC
+  uint8_t dCBCMAC[CBCMAC_BLOCK_SIZE];
+#endif
 } QueryResult, *QueryResultPtr;
 
 

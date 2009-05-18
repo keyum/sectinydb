@@ -88,7 +88,18 @@ implementation {
 #ifdef TIMESYNC
     , TimeSyncC
 #endif
+
+#ifdef USE_SHA1
     , SHA1M
+#endif
+#ifdef USE_CBCMAC
+    ,SkipJackM as Cipher
+    //,RC5M as Cipher
+    //IdentityCipherM as Cipher,
+    ,CBCModeM as Mode
+    //IdentityModeM as Mode,
+    ,CBCMAC as Mac
+#endif
     ;
 
   TupleRouterM.QueryProcessor = QueryProcessor;
@@ -255,5 +266,20 @@ implementation {
   TupleRouterM.WDT -> WDTC;
 #endif
 
+#ifdef USE_SHA1
   TupleRouterM.SHA1 -> SHA1M.SHA1;
+#endif
+#ifdef USE_CBCMAC
+  TupleRouterM.BlockCipherMode -> Mode.BlockCipherMode;
+  TupleRouterM.MAC -> Mac.MAC;
+  TupleRouterM.Random -> RandomLFSR.Random;
+  TupleRouterM.BlockCipherInfo -> Cipher.BlockCipherInfo;
+
+  Mac.BlockCipher -> Cipher;
+  Mode.BlockCipher -> Cipher;
+  Mac.BlockCipherInfo -> Cipher;
+  Mode.BlockCipherInfo -> Cipher.BlockCipherInfo;
+#endif
+  //TupleRouterM.BlockCipherInfo -> Cipher.BlockCipherInfo;
+  //BlockCipherInfo = Cipher.BlockCipherInfo;
 }
