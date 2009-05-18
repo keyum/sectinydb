@@ -125,8 +125,8 @@
 
 #endif
 
-//#define USE_SHA1
-#define USE_CBCMAC
+#define USE_SHA1
+//#define USE_CBCMAC
 
 #ifndef TINYSEC_KEYSIZE
 #define TINYSEC_KEYSIZE	8
